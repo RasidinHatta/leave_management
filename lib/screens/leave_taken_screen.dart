@@ -73,6 +73,8 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
   List<Map<String, dynamic>> _targets = [];
   String? _selectedDatabase;
   bool _loadingDatabases = false;
+  List<Map<String, String>> _leaveTypes = [];
+  bool _loadingLeaveTypes = false;
 
   bool _isLoading = false;
   bool _isImporting = false;
@@ -100,10 +102,34 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           _databaseCtrl.text = _selectedDatabase!;
         }
       });
+      if (_selectedDatabase != null) {
+        await _fetchLeaveTypes(_selectedDatabase);
+      }
     } catch (e) {
       _showSnack('Failed to load database targets: $e', isError: true);
     } finally {
       setState(() => _loadingDatabases = false);
+    }
+  }
+
+  Future<void> _fetchLeaveTypes(String? db) async {
+    setState(() => _loadingLeaveTypes = true);
+    try {
+      final list = await widget.apiClient.getLeaveTypes(database: db);
+      setState(() {
+        _leaveTypes = list.map<Map<String, String>>((t) {
+          final code = (t['lvCode'] as String? ?? '').toUpperCase().trim();
+          final desc = (t['lvDesc'] as String? ?? '').trim();
+          return {
+            'code': code,
+            'desc': desc,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      _showSnack('Failed to load leave types: $e', isError: true);
+    } finally {
+      setState(() => _loadingLeaveTypes = false);
     }
   }
 
@@ -253,11 +279,20 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           continue;
         }
 
+        final lvCodeUpper = lvCode.toUpperCase();
+        final hasCode = _leaveTypes.any((t) => t['code'] == lvCodeUpper);
+        if (!hasCode) {
+          _leaveTypes.add({
+            'code': lvCodeUpper,
+            'desc': lvCodeUpper,
+          });
+        }
+
         newRows.add(
           _LeaveRow(
             empCode: empCode,
             date: parsedDate,
-            code: lvCode.toUpperCase(),
+            code: lvCodeUpper,
             remark: remark,
           ),
         );
@@ -567,6 +602,9 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                       _selectedDatabase = val;
                       _databaseCtrl.text = val ?? '';
                     });
+                    if (val != null) {
+                      _fetchLeaveTypes(val);
+                    }
                   },
                 ),
         ),
@@ -918,21 +956,72 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Leave Code
+          // Leave Code Dropdown
           SizedBox(
             width: 140,
-            child: TextField(
-              controller: row.codeCtrl,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'e.g. AL, ML',
-                isDense: true,
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
+            child: _loadingLeaveTypes
+                ? const SizedBox(
+                    height: 40,
+                    child: Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                      ),
+                    ),
+                  )
+                : InputDecorator(
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _leaveTypes.any((t) => t['code'] == row.codeCtrl.text.trim().toUpperCase())
+                            ? row.codeCtrl.text.trim().toUpperCase()
+                            : null,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                        dropdownColor: AppColors.surfaceElevated,
+                        hint: const Text(
+                          'Select...',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        items: _leaveTypes.map((type) {
+                          final code = type['code'] ?? '';
+                          final desc = type['desc'] ?? '';
+                          final displayText = desc.isNotEmpty && desc != code
+                              ? '$code - $desc'
+                              : code;
+                          return DropdownMenuItem<String>(
+                            value: code,
+                            child: Text(
+                              displayText,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              row.codeCtrl.text = val;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           // Remark

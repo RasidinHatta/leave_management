@@ -202,4 +202,14 @@ class ApiClient {
     final result = await _post('/leave/taken', body);
     return result as Map<String, dynamic>;
   }
+
+  /// GET /leave/config/leave-types
+  Future<List<Map<String, dynamic>>> getLeaveTypes({String? database}) async {
+    var path = '/leave/config/leave-types';
+    if (database != null && database.isNotEmpty) {
+      path = '$path?database=${Uri.encodeComponent(database)}';
+    }
+    final result = await _get(path);
+    return List<Map<String, dynamic>>.from(result as List);
+  }
 }
