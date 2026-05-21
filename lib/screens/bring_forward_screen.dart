@@ -53,7 +53,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   final _databaseCtrl = TextEditingController();
 
   int _selectedYear = DateTime.now().year;
-  int _selectedMonth = 12;
+  int _selectedMonth = DateTime.now().month;
 
   List<Map<String, dynamic>> _targets = [];
   String? _selectedDatabase;
