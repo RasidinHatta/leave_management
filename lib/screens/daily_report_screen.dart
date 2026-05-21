@@ -132,7 +132,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
