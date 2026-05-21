@@ -213,9 +213,9 @@ class ApiClient {
     return List<Map<String, dynamic>>.from(result as List);
   }
 
-  /// POST /leave/login
+  /// POST /login
   Future<Map<String, dynamic>> login(String username, String password) async {
-    final result = await _post('/leave/login', {
+    final result = await _post('/login', {
       'username': username,
       'password': password,
     });
