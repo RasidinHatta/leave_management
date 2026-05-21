@@ -7,12 +7,15 @@ Future<void> loadConfig() async {
   if (kIsWeb) return;
   try {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
-    final file = File('$exeDir/config.ini');
+    var file = File('config.ini');
 
     if (!await file.exists()) {
-      await file.writeAsString('''# HR Leave Management Configuration
-# Change the baseUrl to point to the backend API server.
+      file = File('$exeDir/config.ini');
+    }
 
+    if (!await file.exists()) {
+      await file.writeAsString('''[API]
+# Change the baseUrl to point to the backend API server.
 baseUrl = http://localhost:3000
 ''');
     } else {
