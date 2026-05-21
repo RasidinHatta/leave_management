@@ -212,4 +212,13 @@ class ApiClient {
     final result = await _get(path);
     return List<Map<String, dynamic>>.from(result as List);
   }
+
+  /// POST /leave/login
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    final result = await _post('/leave/login', {
+      'username': username,
+      'password': password,
+    });
+    return result as Map<String, dynamic>;
+  }
 }

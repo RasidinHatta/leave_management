@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:leave_management/core/api_client.dart';
 import 'package:leave_management/core/theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -34,14 +35,16 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    // Simulate network delay for a more premium native feel
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-
+    try {
       final username = _usernameCtrl.text.trim();
       final password = _passwordCtrl.text;
 
-      if (username == 'SUPER' && password == '39903') {
+      final client = ApiClient();
+      final response = await client.login(username, password);
+
+      if (!mounted) return;
+
+      if (response['success'] == true) {
         setState(() => _isLoading = false);
         widget.onLoginSuccess();
       } else {
@@ -50,7 +53,19 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage = 'Invalid username or password';
         });
       }
-    });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      });
+    }
   }
 
   @override
