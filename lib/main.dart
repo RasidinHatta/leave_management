@@ -21,6 +21,7 @@ class LeaveManagementApp extends StatefulWidget {
 
 class _LeaveManagementAppState extends State<LeaveManagementApp> {
   bool _isLoggedIn = false;
+  String _loggedInUsername = '';
 
   @override
   Widget build(BuildContext context) {
@@ -38,16 +39,19 @@ class _LeaveManagementAppState extends State<LeaveManagementApp> {
           ),
           home: _isLoggedIn
               ? HomeScreen(
+                  username: _loggedInUsername,
                   onLogout: () {
                     setState(() {
                       _isLoggedIn = false;
+                      _loggedInUsername = '';
                     });
                   },
                 )
               : LoginScreen(
-                  onLoginSuccess: () {
+                  onLoginSuccess: (username) {
                     setState(() {
                       _isLoggedIn = true;
+                      _loggedInUsername = username;
                     });
                   },
                 ),

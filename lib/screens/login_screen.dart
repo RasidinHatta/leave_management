@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:leave_management/core/api_client.dart';
 import 'package:leave_management/core/theme.dart';
+import 'package:leave_management/core/constants.dart';
 
 class LoginScreen extends StatefulWidget {
-  final VoidCallback onLoginSuccess;
+  final Function(String username) onLoginSuccess;
 
   const LoginScreen({super.key, required this.onLoginSuccess});
 
@@ -39,14 +40,15 @@ class _LoginScreenState extends State<LoginScreen> {
       final username = _usernameCtrl.text.trim();
       final password = _passwordCtrl.text;
 
+      final dbName = kDatabaseName.isNotEmpty ? kDatabaseName : 'MYPAY_JSM';
       final client = ApiClient();
-      final response = await client.login(username, password);
+      final response = await client.leaveLogin(username, password, dbName);
 
       if (!mounted) return;
 
       if (response['success'] == true) {
         setState(() => _isLoading = false);
-        widget.onLoginSuccess();
+        widget.onLoginSuccess(username);
       } else {
         setState(() {
           _isLoading = false;

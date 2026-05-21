@@ -27,8 +27,9 @@ class _SidebarItem {
 // ---------------------------------------------------------------------------
 class HomeScreen extends StatefulWidget {
   final VoidCallback onLogout;
+  final String username;
 
-  const HomeScreen({super.key, required this.onLogout});
+  const HomeScreen({super.key, required this.onLogout, required this.username});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -37,6 +38,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   _Nav _current = _Nav.bringForward;
   final _apiClient = ApiClient();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.username.toUpperCase() == 'REPORT') {
+      _current = _Nav.targets;
+    }
+  }
 
   static const _mainItems = [
     _SidebarItem(
@@ -61,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Logout'),
-        content: const Text('Logout "SUPER"?'),
+        content: Text('Logout "${widget.username}"?'),
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -115,9 +124,14 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildLogo(),
           const SizedBox(height: 4),
-          _buildSection('MAIN', _mainItems),
-          const SizedBox(height: 8),
-          _buildSection('CONFIGURATION', _configItems),
+          if (widget.username.toUpperCase() != 'REPORT') ...[
+            _buildSection('MAIN', _mainItems),
+            const SizedBox(height: 8),
+          ],
+          if (widget.username.toUpperCase() == 'SUPERADMIN' || widget.username.toUpperCase() == 'REPORT') ...[
+            _buildSection('CONFIGURATION', _configItems),
+            const SizedBox(height: 8),
+          ],
           const Spacer(),
           _buildFooter(),
         ],
@@ -243,47 +257,77 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border))),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-                color: AppColors.success, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              Uri.tryParse(kBaseUrl)?.authority ?? kBaseUrl,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 11),
-              overflow: TextOverflow.ellipsis,
+          if (kDatabaseName.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(
+                  Icons.storage_outlined,
+                  size: 12,
+                  color: AppColors.primaryLight,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'DB: $kDatabaseName',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-          ),
-          IconButton(
-            onPressed: _showSettingsDialog,
-            icon: const Icon(
-              Icons.settings_outlined,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-            tooltip: 'Settings',
-            splashRadius: 18,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: _confirmLogoutAndClose,
-            icon: const Icon(
-              Icons.logout_outlined,
-              size: 16,
-              color: AppColors.error,
-            ),
-            tooltip: 'Logout SUPER',
-            splashRadius: 18,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            const SizedBox(height: 8),
+          ],
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                    color: AppColors.success, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  Uri.tryParse(kBaseUrl)?.authority ?? kBaseUrl,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                onPressed: _showSettingsDialog,
+                icon: const Icon(
+                  Icons.settings_outlined,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                tooltip: 'Settings',
+                splashRadius: 18,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: _confirmLogoutAndClose,
+                icon: const Icon(
+                  Icons.logout_outlined,
+                  size: 16,
+                  color: AppColors.error,
+                ),
+                tooltip: 'Logout ${widget.username}',
+                splashRadius: 18,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
         ],
       ),

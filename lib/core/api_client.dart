@@ -123,14 +123,14 @@ class ApiClient {
 
   // =================== API Methods ===================
 
-  /// GET /leave/config/daily-report
+  /// GET /report/daily-report
   Future<List<Map<String, dynamic>>> getDailyReport({
     required String date,
     String? office,
     String? department,
     String? database,
   }) async {
-    final result = await _get('/leave/config/daily-report', queryParams: {
+    final result = await _get('/report/daily-report', queryParams: {
       'date': date,
       'office': office,
       'department': department,
@@ -139,34 +139,34 @@ class ApiClient {
     return (result as List).cast<Map<String, dynamic>>();
   }
 
-  /// GET /leave/config/targets
+  /// GET /report/targets
   Future<List<Map<String, dynamic>>> getTargets() async {
-    final result = await _get('/leave/config/targets');
+    final result = await _get('/report/targets');
     return (result as List).cast<Map<String, dynamic>>();
   }
 
-  /// GET /leave/config/targets/:databaseName
+  /// GET /report/targets/:databaseName
   Future<Map<String, dynamic>> getTargetByDb(String databaseName) async {
-    final result = await _get('/leave/config/targets/$databaseName');
+    final result = await _get('/report/targets/$databaseName');
     return result as Map<String, dynamic>;
   }
 
-  /// POST /leave/config/targets
+  /// POST /report/targets
   Future<Map<String, dynamic>> addTarget(Map<String, dynamic> data) async {
-    final result = await _post('/leave/config/targets', data);
+    final result = await _post('/report/targets', data);
     return result as Map<String, dynamic>;
   }
 
-  /// PATCH /leave/config/targets/:databaseName
+  /// PATCH /report/targets/:databaseName
   Future<Map<String, dynamic>> editTarget(
       String databaseName, Map<String, dynamic> data) async {
-    final result = await _patch('/leave/config/targets/$databaseName', data);
+    final result = await _patch('/report/targets/$databaseName', data);
     return result as Map<String, dynamic>;
   }
 
-  /// DELETE /leave/config/targets/:databaseName
+  /// DELETE /report/targets/:databaseName
   Future<void> deleteTarget(String databaseName) async {
-    await _delete('/leave/config/targets/$databaseName');
+    await _delete('/report/targets/$databaseName');
   }
 
   /// POST /leave/BF
@@ -203,9 +203,9 @@ class ApiClient {
     return result as Map<String, dynamic>;
   }
 
-  /// GET /leave/config/leave-types
+  /// GET /report/leave-types
   Future<List<Map<String, dynamic>>> getLeaveTypes({String? database}) async {
-    var path = '/leave/config/leave-types';
+    var path = '/report/leave-types';
     if (database != null && database.isNotEmpty) {
       path = '$path?database=${Uri.encodeComponent(database)}';
     }
@@ -213,11 +213,21 @@ class ApiClient {
     return List<Map<String, dynamic>>.from(result as List);
   }
 
-  /// POST /login
-  Future<Map<String, dynamic>> login(String username, String password) async {
-    final result = await _post('/login', {
+  /// POST /report/login
+  Future<Map<String, dynamic>> reportLogin(String username, String password) async {
+    final result = await _post('/report/login', {
       'username': username,
       'password': password,
+    });
+    return result as Map<String, dynamic>;
+  }
+
+  /// POST /leave/login
+  Future<Map<String, dynamic>> leaveLogin(String username, String password, String database) async {
+    final result = await _post('/leave/login', {
+      'username': username,
+      'password': password,
+      'database': database,
     });
     return result as Map<String, dynamic>;
   }

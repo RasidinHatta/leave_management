@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:leave_management/core/api_client.dart';
 import 'package:leave_management/core/theme.dart';
+import 'package:leave_management/core/constants.dart';
 
 // ---------------------------------------------------------------------------
 // Data model for a single Leave Taken row (editable via controllers)
@@ -86,7 +87,13 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
   void initState() {
     super.initState();
     _addRow(); // start with one empty row
-    _fetchDatabases();
+    if (kDatabaseName.isNotEmpty) {
+      _selectedDatabase = kDatabaseName;
+      _databaseCtrl.text = kDatabaseName;
+      _fetchLeaveTypes(kDatabaseName);
+    } else {
+      _fetchDatabases();
+    }
   }
 
   Future<void> _fetchDatabases() async {
@@ -558,56 +565,81 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         // Database select
-        SizedBox(
-          width: 280,
-          child: _loadingDatabases
-              ? const SizedBox(
-                  height: 40,
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                )
-              : DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: _selectedDatabase,
-                  style: const TextStyle(
-                      color: AppColors.textPrimary, fontSize: 13),
-                  dropdownColor: AppColors.surfaceElevated,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Database *',
-                    prefixIcon: Icon(Icons.storage_outlined),
-                    isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  items: _targets.map((t) {
-                    final dbName = t['databaseName'] as String;
-                    final dispName = t['displayName'] as String;
-                    return DropdownMenuItem<String>(
-                      value: dbName,
-                      child: Text(
-                        '$dispName ($dbName)',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: AppColors.textPrimary, fontSize: 13),
+        if (kDatabaseName.isEmpty)
+          SizedBox(
+            width: 280,
+            child: _loadingDatabases
+                ? const SizedBox(
+                    height: 40,
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedDatabase = val;
-                      _databaseCtrl.text = val ?? '';
-                    });
-                    if (val != null) {
-                      _fetchLeaveTypes(val);
-                    }
-                  },
+                    ),
+                  )
+                : DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: _selectedDatabase,
+                    style: const TextStyle(
+                        color: AppColors.textPrimary, fontSize: 13),
+                    dropdownColor: AppColors.surfaceElevated,
+                    decoration: const InputDecoration(
+                      labelText: 'Target Database *',
+                      prefixIcon: Icon(Icons.storage_outlined),
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: _targets.map((t) {
+                      final dbName = t['databaseName'] as String;
+                      final dispName = t['displayName'] as String;
+                      return DropdownMenuItem<String>(
+                        value: dbName,
+                        child: Text(
+                          '$dispName ($dbName)',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.textPrimary, fontSize: 13),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedDatabase = val;
+                        _databaseCtrl.text = val ?? '';
+                      });
+                      if (val != null) {
+                        _fetchLeaveTypes(val);
+                      }
+                    },
+                  ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.storage_outlined, size: 16, color: AppColors.primaryLight),
+                const SizedBox(width: 8),
+                Text(
+                  'Database: $kDatabaseName',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-        ),
+              ],
+            ),
+          ),
 
         // Export Excel
         OutlinedButton.icon(
