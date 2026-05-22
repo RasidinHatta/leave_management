@@ -463,7 +463,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
       SnackBar(
         content: Text(msg),
         backgroundColor: isError ? AppColors.error : null,
-        duration: const Duration(seconds: 4),
+        duration: Duration(seconds: 4),
       ),
     );
   }
@@ -476,21 +476,21 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildToolbar(),
             if (_importSummary != null) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildImportBanner(),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (_resultMessage != null) ...[
               _buildResultBanner(),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
             ],
             Expanded(child: _buildTable()),
           ],
@@ -503,19 +503,19 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.event_busy_outlined,
             color: AppColors.primary,
             size: 20,
           ),
         ),
-        const SizedBox(width: 12),
-        const Column(
+        SizedBox(width: 12),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -549,7 +549,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           SizedBox(
             width: 280,
             child: _loadingDatabases
-                ? const SizedBox(
+                ? SizedBox(
                     height: 40,
                     child: Center(
                       child: SizedBox(
@@ -562,12 +562,12 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                 : DropdownButtonFormField<String>(
                     isExpanded: true,
                     initialValue: _selectedDatabase,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
                     dropdownColor: AppColors.surfaceElevated,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Target Database *',
                       prefixIcon: Icon(Icons.storage_outlined),
                       isDense: true,
@@ -584,7 +584,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                         child: Text(
                           '$dispName ($dbName)',
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,
                           ),
@@ -604,7 +604,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           )
         else
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(8),
@@ -613,15 +613,15 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.storage_outlined,
                   size: 16,
                   color: AppColors.primaryLight,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Database: $kDatabaseName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -634,11 +634,11 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         // Export Excel
         OutlinedButton.icon(
           onPressed: _exportToExcel,
-          icon: const Icon(Icons.download_outlined, size: 16),
-          label: const Text('Export Excel'),
+          icon: Icon(Icons.download_outlined, size: 16),
+          label: Text('Export Excel'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            side: BorderSide(color: AppColors.primary),
           ),
         ),
 
@@ -646,35 +646,35 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         OutlinedButton.icon(
           onPressed: _isImporting ? null : _importFromExcel,
           icon: _isImporting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 14,
                   height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.upload_file_outlined, size: 16),
+              : Icon(Icons.upload_file_outlined, size: 16),
           label: Text(_isImporting ? 'Importing…' : 'Import Excel'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            side: BorderSide(color: AppColors.primary),
           ),
         ),
 
         // Clear
         OutlinedButton.icon(
           onPressed: _clearAll,
-          icon: const Icon(Icons.clear_all, size: 16),
-          label: const Text('Clear'),
+          icon: Icon(Icons.clear_all, size: 16),
+          label: Text('Clear'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.textSecondary,
           ),
         ),
 
         // Spacer element
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
 
         // Row count badge
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(20),
@@ -682,10 +682,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           ),
           child: Text(
             '$validCount valid / ${_rows.length} rows',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ),
 
@@ -693,7 +690,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         ElevatedButton.icon(
           onPressed: _isLoading ? null : _submit,
           icon: _isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
@@ -701,7 +698,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                     color: Colors.white,
                   ),
                 )
-              : const Icon(Icons.send_outlined, size: 16),
+              : Icon(Icons.send_outlined, size: 16),
           label: Text(_isLoading ? 'Processing…' : 'Run Leave Taken'),
         ),
       ],
@@ -710,7 +707,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
 
   Widget _buildImportBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.successBg,
         borderRadius: BorderRadius.circular(8),
@@ -718,24 +715,20 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.check_circle_outline,
-            color: AppColors.success,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
+          Icon(Icons.check_circle_outline, color: AppColors.success, size: 16),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               _importSummary!,
-              style: const TextStyle(color: AppColors.success, fontSize: 13),
+              style: TextStyle(color: AppColors.success, fontSize: 13),
             ),
           ),
           IconButton(
             onPressed: () => setState(() => _importSummary = null),
-            icon: const Icon(Icons.close, size: 14),
+            icon: Icon(Icons.close, size: 14),
             color: AppColors.textSecondary,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+            constraints: BoxConstraints(minWidth: 20, minHeight: 20),
           ),
         ],
       ),
@@ -744,8 +737,8 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
 
   Widget _buildResultBanner() {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      duration: Duration(milliseconds: 300),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: _isSuccess ? AppColors.successBg : AppColors.errorBg,
         borderRadius: BorderRadius.circular(8),
@@ -762,7 +755,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
             color: _isSuccess ? AppColors.success : AppColors.error,
             size: 16,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               _resultMessage!,
@@ -774,10 +767,10 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           ),
           IconButton(
             onPressed: () => setState(() => _resultMessage = null),
-            icon: const Icon(Icons.close, size: 14),
+            icon: Icon(Icons.close, size: 14),
             color: AppColors.textSecondary,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+            constraints: BoxConstraints(minWidth: 20, minHeight: 20),
           ),
         ],
       ),
@@ -794,11 +787,11 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
       child: Column(
         children: [
           _buildTableHeader(),
-          const Divider(height: 1),
+          Divider(height: 1),
           Expanded(
             child: ListView.separated(
               itemCount: _rows.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
+              separatorBuilder: (_, _) => Divider(height: 1),
               itemBuilder: (_, i) => _buildTableRow(i),
             ),
           ),
@@ -810,12 +803,12 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
 
   Widget _buildTableHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           SizedBox(
             width: 40,
@@ -890,21 +883,18 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     final isValid = row.isValid;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 100),
+      duration: Duration(milliseconds: 100),
       color: isValid
           ? Colors.transparent
           : AppColors.errorBg.withValues(alpha: 0.3),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
           SizedBox(
             width: 40,
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
           // Employee Code
@@ -912,36 +902,33 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
             flex: 2,
             child: TextField(
               controller: row.empCodeCtrl,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
                 fontFamily: 'monospace',
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Employee Code...',
                 isDense: true,
               ),
               onChanged: (_) => setState(() {}),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Leave Date
           SizedBox(
             width: 180,
             child: TextField(
               controller: row.dateCtrl,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'YYYY-MM-DD',
                 isDense: true,
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.calendar_today, size: 14),
+                  icon: Icon(Icons.calendar_today, size: 14),
                   color: AppColors.textSecondary,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  constraints: BoxConstraints(),
                   onPressed: () async {
                     final curr =
                         DateTime.tryParse(row.dateCtrl.text.trim()) ??
@@ -954,13 +941,13 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                       builder: (ctx, child) {
                         return Theme(
                           data: Theme.of(ctx).copyWith(
-                            colorScheme: const ColorScheme.dark(
+                            colorScheme: ColorScheme.dark(
                               primary: AppColors.primary,
                               onPrimary: AppColors.onPrimary,
                               surface: AppColors.surfaceElevated,
                               onSurface: AppColors.textPrimary,
                             ),
-                            dialogTheme: const DialogThemeData(
+                            dialogTheme: DialogThemeData(
                               backgroundColor: AppColors.background,
                             ),
                           ),
@@ -980,12 +967,12 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
               onChanged: (_) => setState(() {}),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Leave Code Dropdown
           SizedBox(
             width: 140,
             child: _loadingLeaveTypes
-                ? const SizedBox(
+                ? SizedBox(
                     height: 40,
                     child: Center(
                       child: SizedBox(
@@ -996,7 +983,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                     ),
                   )
                 : InputDecorator(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 10,
@@ -1014,12 +1001,12 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                             )
                             ? row.codeCtrl.text.trim().toUpperCase()
                             : null,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
                         ),
                         dropdownColor: AppColors.surfaceElevated,
-                        hint: const Text(
+                        hint: Text(
                           'Select...',
                           style: TextStyle(
                             color: AppColors.textSecondary,
@@ -1037,7 +1024,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                             child: Text(
                               displayText,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 13,
                               ),
@@ -1055,33 +1042,30 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                     ),
                   ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Remark
           Expanded(
             flex: 3,
             child: TextField(
               controller: row.remarkCtrl,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
                 hintText: 'Remark (optional)...',
                 isDense: true,
               ),
               onChanged: (_) => setState(() {}),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Delete row
           SizedBox(
             width: 36,
             child: IconButton(
               onPressed: () => _removeRow(index),
-              icon: const Icon(Icons.delete_outline, size: 16),
+              icon: Icon(Icons.delete_outline, size: 16),
               color: AppColors.error.withValues(alpha: 0.7),
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: 'Remove row',
             ),
           ),
@@ -1093,14 +1077,14 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
   Widget _buildAddRowFooter() {
     return InkWell(
       onTap: _addRow,
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+      borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: const BoxDecoration(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border)),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add, size: 16, color: AppColors.textSecondary),

@@ -35,7 +35,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   Future<void> _fetchDatabases() async {
-    _targets = const [];
+    _targets = [];
     setState(() => _loadingDatabases = false);
   }
 
@@ -71,7 +71,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     final db = _databaseCtrl.text.trim();
     if (db.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Database is required.'),
           backgroundColor: AppColors.error,
         ),
@@ -112,16 +112,16 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildQueryForm(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (_isLoading)
-              const Expanded(child: Center(child: CircularProgressIndicator()))
+              Expanded(child: Center(child: CircularProgressIndicator()))
             else if (_error != null)
               _buildError()
             else if (_hasSearched)
@@ -139,19 +139,19 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.calendar_today_outlined,
             color: AppColors.primary,
             size: 20,
           ),
         ),
-        const SizedBox(width: 12),
-        const Column(
+        SizedBox(width: 12),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -174,7 +174,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
 
   Widget _buildQueryForm() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -183,7 +183,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Query Parameters',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -192,7 +192,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               // Date picker
@@ -201,13 +201,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   onTap: _pickDate,
                   borderRadius: BorderRadius.circular(8),
                   child: InputDecorator(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Report Date *',
                       prefixIcon: Icon(Icons.date_range_outlined, size: 18),
                     ),
                     child: Text(
                       _formattedDate,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13,
                       ),
@@ -215,34 +215,34 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _officeCtrl,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
                     labelText: 'Office (optional)',
                     hintText: 'e.g. Johor-JG',
                     prefixIcon: Icon(Icons.business_outlined, size: 18),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _departmentCtrl,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
                     labelText: 'Department (optional)',
                     hintText: 'e.g. MKT Dept',
                     prefixIcon: Icon(Icons.group_outlined, size: 18),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _loadingDatabases
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 40,
                         child: Center(
                           child: SizedBox(
@@ -255,12 +255,12 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     : DropdownButtonFormField<String>(
                         isExpanded: true,
                         initialValue: _selectedDatabase,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
                         ),
                         dropdownColor: AppColors.surfaceElevated,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Database *',
                           prefixIcon: Icon(Icons.storage_outlined, size: 18),
                           contentPadding: EdgeInsets.symmetric(
@@ -276,7 +276,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                             child: Text(
                               '$dispName ($dbName)',
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 13,
                               ),
@@ -291,16 +291,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         },
                       ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _search,
-                icon: const Icon(Icons.search, size: 16),
-                label: const Text('Search'),
+                icon: Icon(Icons.search, size: 16),
+                label: Text('Search'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 ),
               ),
             ],
@@ -314,8 +311,8 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     return Expanded(
       child: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 480),
-          padding: const EdgeInsets.all(28),
+          constraints: BoxConstraints(maxWidth: 480),
+          padding: EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: AppColors.errorBg,
             borderRadius: BorderRadius.circular(12),
@@ -324,18 +321,18 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: AppColors.error, size: 40),
-              const SizedBox(height: 12),
+              Icon(Icons.error_outline, color: AppColors.error, size: 40),
+              SizedBox(height: 12),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.error),
+                style: TextStyle(color: AppColors.error),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: _search,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Retry'),
+                icon: Icon(Icons.refresh, size: 16),
+                label: Text('Retry'),
               ),
             ],
           ),
@@ -355,8 +352,8 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               size: 64,
               color: AppColors.textSecondary.withValues(alpha: 0.2),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Select a date and click Search to load records',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
@@ -377,8 +374,8 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               size: 64,
               color: AppColors.textSecondary.withValues(alpha: 0.2),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'No records found for the selected criteria',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -393,7 +390,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
@@ -403,7 +400,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               ),
               child: Text(
                 '${_results.length} record${_results.length == 1 ? '' : 's'} found  •  $_formattedDate',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.primaryLight,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -412,7 +409,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Expanded(
           child: Container(
             decoration: BoxDecoration(
@@ -434,7 +431,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                           (col) => DataColumn(
                             label: Text(
                               col.toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 letterSpacing: 0.4,
                               ),
@@ -450,7 +447,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                   (col) => DataCell(
                                     Text(
                                       row[col]?.toString() ?? '—',
-                                      style: const TextStyle(fontSize: 12),
+                                      style: TextStyle(fontSize: 12),
                                     ),
                                   ),
                                 )

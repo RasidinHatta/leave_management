@@ -47,15 +47,15 @@ class _TargetsScreenState extends State<TargetsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildConfigCard(),
             if (_resultMessage != null) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _buildResultBanner(),
             ],
           ],
@@ -68,19 +68,19 @@ class _TargetsScreenState extends State<TargetsScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.storage_outlined,
             color: AppColors.primary,
             size: 20,
           ),
         ),
-        const SizedBox(width: 12),
-        const Column(
+        SizedBox(width: 12),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -97,16 +97,16 @@ class _TargetsScreenState extends State<TargetsScreen> {
             ),
           ],
         ),
-        const Spacer(),
+        Spacer(),
         ElevatedButton.icon(
           onPressed: _isTesting ? null : _testConnection,
           icon: _isTesting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.power_settings_new, size: 16),
+              : Icon(Icons.power_settings_new, size: 16),
           label: Text(_isTesting ? 'Testing...' : 'Test Connection'),
         ),
       ],
@@ -116,7 +116,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
   Widget _buildConfigCard() {
     return Container(
       width: 560,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -126,9 +126,9 @@ class _TargetsScreenState extends State<TargetsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _row('Server', kServerName),
-          const Divider(height: 22),
+          Divider(height: 22),
           _row('Database', kDatabaseName),
-          const Divider(height: 22),
+          Divider(height: 22),
           _row('Driver', kDriverName),
         ],
       ),
@@ -142,7 +142,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
           width: 100,
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -152,7 +152,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
               fontFamily: 'monospace',
@@ -166,7 +166,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
   Widget _buildResultBanner() {
     return Container(
       width: 560,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: _isSuccess ? AppColors.successBg : AppColors.errorBg,
         borderRadius: BorderRadius.circular(8),
@@ -183,7 +183,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
             color: _isSuccess ? AppColors.success : AppColors.error,
             size: 16,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               _resultMessage!,

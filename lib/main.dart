@@ -23,6 +23,8 @@ class LeaveManagementApp extends StatefulWidget {
   static final ValueNotifier<double> fontSizeNotifier = ValueNotifier<double>(
     0.85,
   );
+  static final ValueNotifier<AppAppearance> appearanceNotifier =
+      ValueNotifier<AppAppearance>(const AppAppearance());
 
   @override
   State<LeaveManagementApp> createState() => _LeaveManagementAppState();
@@ -35,36 +37,48 @@ class _LeaveManagementAppState extends State<LeaveManagementApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: LeaveManagementApp.fontSizeNotifier,
-      builder: (context, factor, child) {
-        return MaterialApp(
-          title: 'HR Leave Management',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.dark.copyWith(
-            textTheme: AppTheme.scaleTextTheme(AppTheme.dark.textTheme, factor),
-          ),
-          home: _isLoggedIn
-              ? HomeScreen(
-                  username: _loggedInUsername,
-                  role: _loggedInRole,
-                  onLogout: () {
-                    setState(() {
-                      _isLoggedIn = false;
-                      _loggedInUsername = '';
-                      _loggedInRole = '';
-                    });
-                  },
-                )
-              : LoginScreen(
-                  onLoginSuccess: (username, role) {
-                    setState(() {
-                      _isLoggedIn = true;
-                      _loggedInUsername = username;
-                      _loggedInRole = role;
-                    });
-                  },
-                ),
+    return ValueListenableBuilder<AppAppearance>(
+      valueListenable: LeaveManagementApp.appearanceNotifier,
+      builder: (context, appearance, _) {
+        return ValueListenableBuilder<double>(
+          valueListenable: LeaveManagementApp.fontSizeNotifier,
+          builder: (context, factor, child) {
+            return MaterialApp(
+              title: 'HR Leave Management',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.fromAppearance(appearance),
+              builder: (context, child) {
+                final mediaQuery = MediaQuery.of(context);
+                return MediaQuery(
+                  data: mediaQuery.copyWith(
+                    textScaler: TextScaler.linear(factor),
+                  ),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
+              home: _isLoggedIn
+                  ? HomeScreen(
+                      username: _loggedInUsername,
+                      role: _loggedInRole,
+                      onLogout: () {
+                        setState(() {
+                          _isLoggedIn = false;
+                          _loggedInUsername = '';
+                          _loggedInRole = '';
+                        });
+                      },
+                    )
+                  : LoginScreen(
+                      onLoginSuccess: (username, role) {
+                        setState(() {
+                          _isLoggedIn = true;
+                          _loggedInUsername = username;
+                          _loggedInRole = role;
+                        });
+                      },
+                    ),
+            );
+          },
         );
       },
     );

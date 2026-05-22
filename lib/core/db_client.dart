@@ -10,7 +10,7 @@ import 'constants.dart';
 class DatabaseException implements Exception {
   final String message;
 
-  const DatabaseException(this.message);
+  DatabaseException(this.message);
 
   @override
   String toString() => message;
@@ -169,7 +169,7 @@ class DirectDbClient {
     final batches = <String>[];
     final buffer = StringBuffer();
 
-    for (final line in const LineSplitter().convert(sql)) {
+    for (final line in LineSplitter().convert(sql)) {
       if (line.trim().toUpperCase() == 'GO') {
         final batch = buffer.toString().trim();
         if (batch.isNotEmpty) batches.add(batch);
@@ -258,20 +258,20 @@ SELECT
       databaseName: databaseName,
     );
     if (results.isEmpty) {
-      throw const DatabaseException('Invalid username or password');
+      throw DatabaseException('Invalid username or password');
     }
 
     final user = results.first;
     final storedHash = user['PASSWD'] as String?;
     final role = user['ROLE'] as String? ?? 'USER';
     if (storedHash == null) {
-      throw const DatabaseException('Invalid username or password');
+      throw DatabaseException('Invalid username or password');
     }
 
     final isMatch = BCrypt.checkpw(password, storedHash);
     final isLegacyMatch = password == storedHash;
     if (!isMatch && !isLegacyMatch) {
-      throw const DatabaseException('Invalid username or password');
+      throw DatabaseException('Invalid username or password');
     }
 
     return {
@@ -292,7 +292,7 @@ SELECT
       databaseName: databaseName,
     );
     if (reqResults.isEmpty || reqResults.first['ROLE'] != 'ADMIN') {
-      throw const DatabaseException('Only ADMIN can view users');
+      throw DatabaseException('Only ADMIN can view users');
     }
 
     return query(
@@ -314,13 +314,13 @@ SELECT
       databaseName: databaseName,
     );
     if (reqResults.isEmpty || reqResults.first['ROLE'] != 'ADMIN') {
-      throw const DatabaseException('Only ADMIN can create users');
+      throw DatabaseException('Only ADMIN can create users');
     }
 
     final cleanNewUser = _quote(newUsername);
     final normalizedRole = role.toUpperCase().trim();
     if (normalizedRole != 'USER' && normalizedRole != 'REPORT') {
-      throw const DatabaseException('Role must be USER or REPORT');
+      throw DatabaseException('Role must be USER or REPORT');
     }
 
     final userCheck = await query(
@@ -328,7 +328,7 @@ SELECT
       databaseName: databaseName,
     );
     if (userCheck.isNotEmpty) {
-      throw const DatabaseException('User already exists');
+      throw DatabaseException('User already exists');
     }
 
     final hashedPwd = BCrypt.hashpw(newPassword, BCrypt.gensalt(logRounds: 10));
@@ -353,13 +353,13 @@ SELECT
       databaseName: databaseName,
     );
     if (reqResults.isEmpty || reqResults.first['ROLE'] != 'ADMIN') {
-      throw const DatabaseException('Only ADMIN can update users');
+      throw DatabaseException('Only ADMIN can update users');
     }
 
     final cleanTarget = _quote(targetUsername);
     final normalizedRole = role.toUpperCase().trim();
     if (normalizedRole != 'USER' && normalizedRole != 'REPORT') {
-      throw const DatabaseException('Role must be USER or REPORT');
+      throw DatabaseException('Role must be USER or REPORT');
     }
 
     final userCheck = await query(
@@ -367,7 +367,7 @@ SELECT
       databaseName: databaseName,
     );
     if (userCheck.isEmpty) {
-      throw const DatabaseException('Target user not found');
+      throw DatabaseException('Target user not found');
     }
 
     if (newPassword != null && newPassword.trim().isNotEmpty) {
@@ -395,7 +395,7 @@ SELECT
     String databaseName,
   ) async {
     if (requesterUsername == targetUsername) {
-      throw const DatabaseException('You cannot delete your own account');
+      throw DatabaseException('You cannot delete your own account');
     }
 
     final cleanRequester = _quote(requesterUsername);
@@ -404,7 +404,7 @@ SELECT
       databaseName: databaseName,
     );
     if (reqResults.isEmpty || reqResults.first['ROLE'] != 'ADMIN') {
-      throw const DatabaseException('Only ADMIN can delete users');
+      throw DatabaseException('Only ADMIN can delete users');
     }
 
     final cleanTarget = _quote(targetUsername);
@@ -413,7 +413,7 @@ SELECT
       databaseName: databaseName,
     );
     if (userCheck.isEmpty) {
-      throw const DatabaseException('Target user not found');
+      throw DatabaseException('Target user not found');
     }
 
     await execute(
@@ -424,10 +424,18 @@ SELECT
   }
 
   Future<List<Map<String, dynamic>>> getLeaveTypes(String databaseName) {
-    return query(
-      "SELECT LV_CODE AS lvCode, LV_DESC AS lvDesc, LV_EVENT_CODE AS lvEventCode, IS_LEAVE AS isLeave, DAY_ AS day, LV_DAY_PORTION_CODE AS lvDayPortionCode FROM dbo.LV_TYPE WHERE LV_EVENT_CODE = 'LEAVE' ORDER BY LV_CODE",
-      databaseName: databaseName,
-    );
+    return query('''
+SELECT
+  CAST(LV_CODE AS VARCHAR(50)) AS lvCode,
+  CAST(LV_DESC AS VARCHAR(255)) AS lvDesc,
+  CAST(LV_EVENT_CODE AS VARCHAR(50)) AS lvEventCode,
+  CAST(IS_LEAVE AS INT) AS isLeave,
+  CAST(DAY_ AS DECIMAL(18, 4)) AS day,
+  CAST(LV_DAY_PORTION_CODE AS VARCHAR(50)) AS lvDayPortionCode
+FROM dbo.LV_TYPE
+WHERE CAST(LV_EVENT_CODE AS VARCHAR(50)) = 'LEAVE'
+ORDER BY CAST(LV_CODE AS VARCHAR(50))
+''', databaseName: databaseName);
   }
 
   Future<List<Map<String, dynamic>>> getDailyReport({
@@ -455,7 +463,7 @@ SELECT
     required int month,
     required List<Map<String, dynamic>> list,
   }) async {
-    if (list.isEmpty) throw const DatabaseException('No records to add.');
+    if (list.isEmpty) throw DatabaseException('No records to add.');
 
     final buffer = StringBuffer();
     buffer.writeln('DECLARE @List dbo.BringForwardLeaveList;');
@@ -482,7 +490,7 @@ SELECT
     required String database,
     required List<Map<String, dynamic>> list,
   }) async {
-    if (list.isEmpty) throw const DatabaseException('No records to add.');
+    if (list.isEmpty) throw DatabaseException('No records to add.');
 
     final buffer = StringBuffer();
     buffer.writeln('DECLARE @List dbo.LeaveImportList;');

@@ -5,7 +5,7 @@ import 'constants.dart';
 import 'db_client.dart';
 import 'package:leave_management/models/target.dart';
 
-const String _emailPasswordPassphrase = 'leave-management-report-config';
+String _emailPasswordPassphrase = 'leave-management-report-config';
 
 class ReportConfigDbClient {
   static final ReportConfigDbClient _instance =
@@ -21,7 +21,7 @@ class ReportConfigDbClient {
     if (_isConnected) return;
 
     if (kReportServerName.isEmpty) {
-      throw const DatabaseException(
+      throw DatabaseException(
         'config.ini must contain Server under [ReportConfig].',
       );
     }

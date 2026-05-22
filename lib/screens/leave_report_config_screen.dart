@@ -57,7 +57,7 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
       await _loadTargets();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report config database setup complete.')),
+        SnackBar(content: Text('Report config database setup complete.')),
       );
     } on DatabaseException catch (e) {
       setState(() => _error = e.message);
@@ -108,17 +108,17 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Report Target'),
+        title: Text('Delete Report Target'),
         content: Text('Delete ${target.displayName} (${target.databaseName})?'),
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
+            child: Text('Delete'),
           ),
         ],
       ),
@@ -145,17 +145,17 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildConfigStrip(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? Center(child: CircularProgressIndicator())
                   : _error != null
                   ? _buildError()
                   : _buildTable(),
@@ -170,19 +170,19 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.fact_check_outlined,
             color: AppColors.primary,
             size: 20,
           ),
         ),
-        const SizedBox(width: 12),
-        const Column(
+        SizedBox(width: 12),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -199,41 +199,41 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
             ),
           ],
         ),
-        const Spacer(),
+        Spacer(),
         OutlinedButton.icon(
           onPressed: _isTesting ? null : _testConnection,
           icon: _isTesting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.power_settings_new, size: 16),
+              : Icon(Icons.power_settings_new, size: 16),
           label: Text(_isTesting ? 'Testing...' : 'Test Connection'),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         OutlinedButton.icon(
           onPressed: _isSettingUp ? null : _setupConfigDatabase,
           icon: _isSettingUp
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.build_outlined, size: 16),
+              : Icon(Icons.build_outlined, size: 16),
           label: Text(_isSettingUp ? 'Setting Up...' : 'Setup DB'),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         OutlinedButton.icon(
           onPressed: _isLoading || _isSettingUp ? null : _loadTargets,
-          icon: const Icon(Icons.refresh, size: 16),
-          label: const Text('Refresh'),
+          icon: Icon(Icons.refresh, size: 16),
+          label: Text('Refresh'),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         ElevatedButton.icon(
           onPressed: () => _showTargetDialog(null),
-          icon: const Icon(Icons.add, size: 16),
-          label: const Text('Add Target'),
+          icon: Icon(Icons.add, size: 16),
+          label: Text('Add Target'),
         ),
       ],
     );
@@ -241,7 +241,7 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
 
   Widget _buildConfigStrip() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
@@ -250,15 +250,11 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.storage_outlined,
-            color: AppColors.primaryLight,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
+          Icon(Icons.storage_outlined, color: AppColors.primaryLight, size: 16),
+          SizedBox(width: 8),
           Text(
             '$kReportServerName / $kReportDatabaseName / $kReportDriverName',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 12,
               fontFamily: 'monospace',
@@ -272,8 +268,8 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
   Widget _buildError() {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 560),
-        padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(maxWidth: 560),
+        padding: EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: AppColors.errorBg,
           borderRadius: BorderRadius.circular(12),
@@ -282,18 +278,18 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 40),
-            const SizedBox(height: 12),
+            Icon(Icons.error_outline, color: AppColors.error, size: 40),
+            SizedBox(height: 12),
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.error),
+              style: TextStyle(color: AppColors.error),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: _loadTargets,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Retry'),
+              icon: Icon(Icons.refresh, size: 16),
+              label: Text('Retry'),
             ),
           ],
         ),
@@ -312,16 +308,16 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
               size: 64,
               color: AppColors.textSecondary.withValues(alpha: 0.2),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'No report targets configured yet',
               style: TextStyle(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: () => _showTargetDialog(null),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add First Target'),
+              icon: Icon(Icons.add, size: 16),
+              label: Text('Add First Target'),
             ),
           ],
         ),
@@ -337,11 +333,11 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
       child: Column(
         children: [
           _buildTableHeader(),
-          const Divider(height: 1),
+          Divider(height: 1),
           Expanded(
             child: ListView.separated(
               itemCount: _targets.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
+              separatorBuilder: (_, _) => Divider(height: 1),
               itemBuilder: (_, index) => _buildRow(_targets[index]),
             ),
           ),
@@ -351,19 +347,19 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
   }
 
   Widget _buildTableHeader() {
-    const style = TextStyle(
+    final style = TextStyle(
       color: AppColors.textSecondary,
       fontSize: 12,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.5,
     );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Expanded(flex: 2, child: Text('DATABASE', style: style)),
           Expanded(flex: 2, child: Text('DISPLAY NAME', style: style)),
@@ -381,14 +377,14 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
 
   Widget _buildRow(Target target) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         children: [
           Expanded(
             flex: 2,
             child: Text(
               target.databaseName,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -400,17 +396,14 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
             flex: 2,
             child: Text(
               target.displayName,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
             ),
           ),
           Expanded(
             flex: 2,
             child: Text(
               '${target.smtpServer ?? '-'}:${target.smtpPort ?? 587}\n${target.emailUser}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12,
                 height: 1.35,
@@ -422,17 +415,14 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
             child: Text(
               target.toEmails,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ),
           SizedBox(
             width: 72,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: target.isActive
                       ? AppColors.successBg
@@ -465,25 +455,19 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
               children: [
                 IconButton(
                   onPressed: () => _showTargetDialog(target),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  icon: Icon(Icons.edit_outlined, size: 16),
                   color: AppColors.primary,
                   tooltip: 'Edit',
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
+                  constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
                 IconButton(
                   onPressed: () => _deleteTarget(target),
-                  icon: const Icon(Icons.delete_outline, size: 16),
+                  icon: Icon(Icons.delete_outline, size: 16),
                   color: AppColors.error,
                   tooltip: 'Delete',
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
+                  constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
               ],
             ),
@@ -602,11 +586,11 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border, width: 1),
+        side: BorderSide(color: AppColors.border, width: 1),
       ),
       child: Container(
         width: 620,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -623,17 +607,17 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const Spacer(),
+                    Spacer(),
                     IconButton(
                       onPressed: _isSaving
                           ? null
                           : () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, size: 20),
+                      icon: Icon(Icons.close, size: 20),
                       color: AppColors.textSecondary,
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 Row(
                   children: [
                     Expanded(
@@ -645,7 +629,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                         validator: _required,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: _field(
                         _displayNameCtrl,
@@ -656,7 +640,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -667,7 +651,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                         validator: _required,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: _field(
                         _smtpPortCtrl,
@@ -682,7 +666,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -693,7 +677,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                         validator: _required,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: _field(
                         _emailPasswordCtrl,
@@ -717,16 +701,16 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _field(
                   _toEmailsCtrl,
                   'To Emails',
                   'recipient@mail.com, another@mail.com',
                   validator: _required,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _field(_ccEmailsCtrl, 'CC Emails', 'optional@mail.com'),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Row(
                   children: [
                     _switch(
@@ -735,24 +719,24 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                       onChanged: (value) =>
                           setState(() => _emailUseTls = value),
                     ),
-                    const SizedBox(width: 24),
+                    SizedBox(width: 24),
                     _switch(
                       label: 'Active',
                       value: _isActive,
                       onChanged: (value) => setState(() => _isActive = value),
                     ),
-                    const Spacer(),
+                    Spacer(),
                     OutlinedButton(
                       onPressed: _isSaving
                           ? null
                           : () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text('Cancel'),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: _isSaving ? null : _save,
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
@@ -789,13 +773,13 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         TextFormField(
           controller: controller,
           enabled: enabled,
@@ -803,7 +787,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
           validator: validator,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
           decoration: InputDecoration(
             hintText: hint,
             suffixIcon: suffixIcon,
@@ -823,8 +807,8 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Switch(value: value, onChanged: _isSaving ? null : onChanged),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(color: AppColors.textPrimary)),
+        SizedBox(width: 6),
+        Text(label, style: TextStyle(color: AppColors.textPrimary)),
       ],
     );
   }

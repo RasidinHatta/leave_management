@@ -44,6 +44,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _settingsAmber = Color(0xFFF59E0B);
+  static const _settingsAmberTintDark = Color(0xFF2D2008);
+  static const _settingsAmberTintLight = Color(0xFFFFF7E6);
+
+  final ScrollController _settingsScrollCtrl = ScrollController();
   _Nav _current = _Nav.bringForward;
 
   @override
@@ -54,9 +59,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _settingsScrollCtrl.dispose();
+    super.dispose();
+  }
+
   String get _role => widget.role.toUpperCase().trim();
 
-  static const _mainItems = [
+  static final _mainItems = [
     _SidebarItem(
       icon: Icons.arrow_circle_right_outlined,
       label: 'Bring Forward',
@@ -73,12 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Logout'),
+        title: Text('Confirm Logout'),
         content: Text('Logout "${widget.username}"?'),
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -86,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Logout'),
+            child: Text('Logout'),
           ),
         ],
       ),
@@ -126,41 +137,41 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildLogo(),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           if (_role == 'ADMIN' || _role == 'USER') ...[
             _buildSection('MAIN', _mainItems),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
           if (_role == 'ADMIN') ...[
             _buildSection('CONFIGURATION', [
-              const _SidebarItem(
+              _SidebarItem(
                 icon: Icons.storage_outlined,
                 label: 'DB Targets',
                 nav: _Nav.targets,
               ),
-              const _SidebarItem(
+              _SidebarItem(
                 icon: Icons.fact_check_outlined,
                 label: 'Leave Report Config',
                 nav: _Nav.leaveReportConfig,
               ),
-              const _SidebarItem(
+              _SidebarItem(
                 icon: Icons.people_outline,
                 label: 'Manage Users',
                 nav: _Nav.manageUsers,
               ),
             ]),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ] else if (_role == 'REPORT') ...[
             _buildSection('CONFIGURATION', [
-              const _SidebarItem(
+              _SidebarItem(
                 icon: Icons.fact_check_outlined,
                 label: 'Leave Report Config',
                 nav: _Nav.leaveReportConfig,
               ),
             ]),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
-          const Spacer(),
+          Spacer(),
           _buildFooter(),
         ],
       ),
@@ -169,28 +180,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildLogo() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+      padding: EdgeInsets.fromLTRB(18, 20, 18, 16),
       child: Row(
         children: [
           Container(
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
-              Icons.event_available,
-              color: Colors.white,
-              size: 18,
-            ),
+            child: Icon(Icons.event_available, color: Colors.white, size: 18),
           ),
-          const SizedBox(width: 10),
-          const Column(
+          SizedBox(width: 10),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -218,10 +225,10 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+          padding: EdgeInsets.fromLTRB(18, 8, 18, 4),
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -237,13 +244,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNavBtn(_SidebarItem item) {
     final selected = _current == item.nav;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       child: InkWell(
         onTap: () => setState(() => _current = item.nav),
         borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          duration: Duration(milliseconds: 150),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           decoration: BoxDecoration(
             color: selected ? AppColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
@@ -257,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? AppColors.primaryLight
                     : AppColors.textSecondary,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   item.label,
@@ -274,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   width: 5,
                   height: 5,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.primaryLight,
                     shape: BoxShape.circle,
                   ),
@@ -288,8 +295,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFooter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Column(
@@ -299,16 +306,16 @@ class _HomeScreenState extends State<HomeScreen> {
           if (kDatabaseName.isNotEmpty) ...[
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.storage_outlined,
                   size: 12,
                   color: AppColors.primaryLight,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'DB: $kDatabaseName',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -318,23 +325,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
           Row(
             children: [
               Container(
                 width: 7,
                 height: 7,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.success,
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '$kServerName / $kDriverName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
                   ),
@@ -343,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               IconButton(
                 onPressed: _showSettingsDialog,
-                icon: const Icon(
+                icon: Icon(
                   Icons.settings_outlined,
                   size: 16,
                   color: AppColors.textSecondary,
@@ -351,12 +358,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'Settings',
                 splashRadius: 18,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                constraints: BoxConstraints(),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               IconButton(
                 onPressed: _confirmLogout,
-                icon: const Icon(
+                icon: Icon(
                   Icons.logout_outlined,
                   size: 16,
                   color: AppColors.error,
@@ -364,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'Logout ${widget.username}',
                 splashRadius: 18,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                constraints: BoxConstraints(),
               ),
             ],
           ),
@@ -381,113 +388,218 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppColors.border, width: 1),
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: AppColors.border, width: 1),
           ),
           child: Container(
-            width: 400,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            width: 500,
+            constraints: BoxConstraints(maxHeight: 660),
+            padding: EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Settings',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
+                Flexible(
+                  child: RawScrollbar(
+                    controller: _settingsScrollCtrl,
+                    thumbVisibility: true,
+                    radius: Radius.circular(999),
+                    thickness: 6,
+                    thumbColor: AppColors.border,
+                    crossAxisMargin: 2,
+                    child: SingleChildScrollView(
+                      controller: _settingsScrollCtrl,
+                      padding: EdgeInsets.only(right: 18),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Settings',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: Icon(Icons.close, size: 20),
+                                color: AppColors.textSecondary,
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(
+                                  minWidth: 42,
+                                  minHeight: 34,
+                                ),
+                                splashRadius: 20,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 26),
+                          _sectionLabel('Display Mode'),
+                          SizedBox(height: 10),
+                          ValueListenableBuilder<AppAppearance>(
+                            valueListenable:
+                                LeaveManagementApp.appearanceNotifier,
+                            builder: (context, appearance, child) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _appearanceOption(
+                                      label: 'Dark',
+                                      icon: Icons.dark_mode_outlined,
+                                      selected:
+                                          appearance.mode == AppThemeMode.dark,
+                                      onTap: () {
+                                        LeaveManagementApp
+                                            .appearanceNotifier
+                                            .value = appearance.copyWith(
+                                          mode: AppThemeMode.dark,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: _appearanceOption(
+                                      label: 'Light',
+                                      icon: Icons.light_mode_outlined,
+                                      selected:
+                                          appearance.mode == AppThemeMode.light,
+                                      onTap: () {
+                                        LeaveManagementApp
+                                            .appearanceNotifier
+                                            .value = appearance.copyWith(
+                                          mode: AppThemeMode.light,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          SizedBox(height: 26),
+                          _sectionLabel('Color Theme'),
+                          SizedBox(height: 12),
+                          ValueListenableBuilder<AppAppearance>(
+                            valueListenable:
+                                LeaveManagementApp.appearanceNotifier,
+                            builder: (context, appearance, child) {
+                              return GridView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: AppPalette.values.length,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 10,
+                                      childAspectRatio: 2.35,
+                                    ),
+                                itemBuilder: (context, index) {
+                                  final palette = AppPalette.values[index];
+                                  return _paletteOption(
+                                    palette: palette,
+                                    selected: appearance.palette == palette,
+                                    onTap: () {
+                                      LeaveManagementApp
+                                          .appearanceNotifier
+                                          .value = appearance.copyWith(
+                                        palette: palette,
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                          SizedBox(height: 26),
+                          _sectionLabel('App Font Size'),
+                          SizedBox(height: 10),
+                          ValueListenableBuilder<double>(
+                            valueListenable:
+                                LeaveManagementApp.fontSizeNotifier,
+                            builder: (context, factor, child) {
+                              return Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<double>(
+                                    value: factor,
+                                    isExpanded: true,
+                                    dropdownColor: AppColors.surface,
+                                    icon: Icon(
+                                      Icons.keyboard_arrow_down,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppColors.textPrimary,
+                                        ),
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: 0.75,
+                                        child: Text('Extra Small'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 0.85,
+                                        child: Text('Small (Default)'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 1.00,
+                                        child: Text('Medium'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 1.15,
+                                        child: Text('Large'),
+                                      ),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        LeaveManagementApp
+                                                .fontSizeNotifier
+                                                .value =
+                                            val;
+                                      }
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, size: 20),
-                      color: AppColors.textSecondary,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      splashRadius: 20,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'App Font Size',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 8),
-                ValueListenableBuilder<double>(
-                  valueListenable: LeaveManagementApp.fontSizeNotifier,
-                  builder: (context, factor, child) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<double>(
-                          value: factor,
-                          isExpanded: true,
-                          dropdownColor: AppColors.surface,
-                          icon: const Icon(
-                            Icons.keyboard_arrow_down,
-                            color: AppColors.textSecondary,
-                          ),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textPrimary),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 0.75,
-                              child: Text('Extra Small'),
-                            ),
-                            DropdownMenuItem(
-                              value: 0.85,
-                              child: Text('Small (Default)'),
-                            ),
-                            DropdownMenuItem(
-                              value: 1.00,
-                              child: Text('Medium'),
-                            ),
-                            DropdownMenuItem(value: 1.15, child: Text('Large')),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) {
-                              LeaveManagementApp.fontSizeNotifier.value = val;
-                            }
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
+                SizedBox(height: 26),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _settingsAmber,
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: _settingsAmber),
+                      padding: EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      elevation: 0,
                     ),
                     child: Text(
                       'Close',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onPrimary,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -500,17 +612,227 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _sectionLabel(String label) {
+    return Text(
+      label.toUpperCase(),
+      style: TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.7,
+      ),
+    );
+  }
+
+  Widget _appearanceOption({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? (AppColors.isDark
+                    ? _settingsAmberTintDark
+                    : _settingsAmberTintLight)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? _settingsAmber : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? _settingsAmber : AppColors.textSecondary,
+            ),
+            SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paletteOption({
+    required AppPalette palette,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final swatches = _paletteSwatches(palette);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected
+              ? (AppColors.isDark
+                    ? _settingsAmberTintDark
+                    : _settingsAmberTintLight)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? _settingsAmber : AppColors.border,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: swatches
+                  .map(
+                    (color) => Expanded(
+                      child: Container(
+                        height: 22,
+                        margin: EdgeInsets.only(
+                          right: color == swatches.last ? 0 : 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            SizedBox(height: 9),
+            Text(
+              _paletteLabel(palette),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 3),
+            Text(
+              _paletteDescription(palette),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Color> _paletteSwatches(AppPalette palette) {
+    switch (palette) {
+      case AppPalette.amberSunset:
+        return [
+          Color(0xFFF59E0B),
+          Color(0xFFEF4444),
+          Color(0xFFF97316),
+          Color(0xFFFCD34D),
+        ];
+      case AppPalette.oceanBreeze:
+        return [
+          Color(0xFF3B82F6),
+          Color(0xFF06B6D4),
+          Color(0xFF0EA5E9),
+          Color(0xFF93C5FD),
+        ];
+      case AppPalette.forestWalk:
+        return [
+          Color(0xFF10B981),
+          Color(0xFF34D399),
+          Color(0xFF6EE7B7),
+          Color(0xFF065F46),
+        ];
+      case AppPalette.lavenderDusk:
+        return [
+          Color(0xFF8B5CF6),
+          Color(0xFFEC4899),
+          Color(0xFFA78BFA),
+          Color(0xFFF9A8D4),
+        ];
+      case AppPalette.slatePro:
+        return [
+          Color(0xFF475569),
+          Color(0xFF64748B),
+          Color(0xFF94A3B8),
+          Color(0xFFCBD5E1),
+        ];
+      case AppPalette.roseGold:
+        return [
+          Color(0xFFFB7185),
+          Color(0xFFF43F5E),
+          Color(0xFFFBBF24),
+          Color(0xFFFDE68A),
+        ];
+    }
+  }
+
+  String _paletteLabel(AppPalette palette) {
+    switch (palette) {
+      case AppPalette.amberSunset:
+        return 'Amber sunset';
+      case AppPalette.oceanBreeze:
+        return 'Ocean breeze';
+      case AppPalette.forestWalk:
+        return 'Forest walk';
+      case AppPalette.lavenderDusk:
+        return 'Lavender dusk';
+      case AppPalette.slatePro:
+        return 'Slate pro';
+      case AppPalette.roseGold:
+        return 'Rose gold';
+    }
+  }
+
+  String _paletteDescription(AppPalette palette) {
+    switch (palette) {
+      case AppPalette.amberSunset:
+        return 'Warm oranges & reds';
+      case AppPalette.oceanBreeze:
+        return 'Cool blues & cyans';
+      case AppPalette.forestWalk:
+        return 'Fresh greens & teal';
+      case AppPalette.lavenderDusk:
+        return 'Purples & pinks';
+      case AppPalette.slatePro:
+        return 'Neutral grays';
+      case AppPalette.roseGold:
+        return 'Pinks & warm golds';
+    }
+  }
+
   // ---- Content area --------------------------------------------------------
   Widget _buildContent() {
     switch (_current) {
       case _Nav.bringForward:
-        return const BringForwardScreen();
+        return BringForwardScreen();
       case _Nav.leaveTaken:
-        return const LeaveTakenScreen();
+        return LeaveTakenScreen();
       case _Nav.targets:
-        return const TargetsScreen();
+        return TargetsScreen();
       case _Nav.leaveReportConfig:
-        return const LeaveReportConfigScreen();
+        return LeaveReportConfigScreen();
       case _Nav.manageUsers:
         return ManageUsersScreen(adminUsername: widget.username);
     }

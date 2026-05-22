@@ -48,7 +48,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Future<void> _fetchDatabases() async {
-    _targets = const [];
+    _targets = [];
     _selectedDatabase = kDatabaseName;
     setState(() => _loadingDatabases = false);
     if (_selectedDatabase != null && _selectedDatabase!.isNotEmpty) {
@@ -109,7 +109,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       SnackBar(
         content: Text(msg),
         backgroundColor: isError ? AppColors.error : AppColors.success,
-        duration: const Duration(seconds: 4),
+        duration: Duration(seconds: 4),
       ),
     );
   }
@@ -161,17 +161,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Deletion'),
+        title: Text('Confirm Deletion'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Are you sure you want to delete user "$targetUsername"?',
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               '⚠️ This action is permanent and cannot be undone.',
               style: TextStyle(color: AppColors.error, fontSize: 13),
             ),
@@ -180,7 +180,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -206,7 +206,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete User'),
+            child: Text('Delete User'),
           ),
         ],
       ),
@@ -222,19 +222,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
     switch (role.toUpperCase()) {
       case 'REPORT':
-        bg = const Color(0xFF78350F);
-        text = const Color(0xFFFDE68A);
+        bg = Color(0xFF78350F);
+        text = Color(0xFFFDE68A);
         icon = Icons.fact_check_outlined;
         break;
       default: // USER
-        bg = const Color(0xFF064E3B); // Emerald background
-        text = const Color(0xFFA7F3D0); // Emerald text
+        bg = Color(0xFF064E3B); // Emerald background
+        text = Color(0xFFA7F3D0); // Emerald text
         icon = Icons.person_outline;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
@@ -244,7 +244,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: text, size: 14),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             role,
             style: TextStyle(
@@ -264,17 +264,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildToolbar(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Expanded(
               child: _isLoading && _users.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? Center(child: CircularProgressIndicator())
                   : _error != null
                   ? _buildErrorWidget()
                   : _buildUsersTable(),
@@ -292,19 +292,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.people_outline,
                 color: AppColors.primary,
                 size: 20,
               ),
             ),
-            const SizedBox(width: 12),
-            const Column(
+            SizedBox(width: 12),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -329,10 +329,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         if (_selectedDatabase != null && !_isLoading && _error == null)
           ElevatedButton.icon(
             onPressed: _showAddUserDialog,
-            icon: const Icon(Icons.person_add_outlined, size: 16),
-            label: const Text('Add User'),
+            icon: Icon(Icons.person_add_outlined, size: 16),
+            label: Text('Add User'),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
       ],
@@ -350,18 +350,18 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           width: 300,
           child: TextField(
             controller: _searchCtrl,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               hintText: 'Search user or role...',
-              prefixIcon: const Icon(Icons.search, size: 16),
+              prefixIcon: Icon(Icons.search, size: 16),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
+              contentPadding: EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 10,
               ),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
+                      icon: Icon(Icons.clear, size: 16),
                       onPressed: () {
                         _searchCtrl.clear();
                         setState(() {
@@ -386,7 +386,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           SizedBox(
             width: 250,
             child: _loadingDatabases
-                ? const SizedBox(
+                ? SizedBox(
                     height: 36,
                     child: Center(
                       child: SizedBox(
@@ -399,12 +399,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 : DropdownButtonFormField<String>(
                     isExpanded: true,
                     initialValue: _selectedDatabase,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
                     dropdownColor: AppColors.surfaceElevated,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Database',
                       prefixIcon: Icon(Icons.storage_outlined, size: 16),
                       isDense: true,
@@ -421,7 +421,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         child: Text(
                           '$dispName ($dbName)',
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,
                           ),
@@ -440,7 +440,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           )
         else
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(8),
@@ -449,15 +449,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.storage_outlined,
                   size: 15,
                   color: AppColors.primaryLight,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Database: $kDatabaseName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -469,7 +469,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
         // Manual refresh button
         IconButton(
-          icon: const Icon(Icons.refresh, size: 18),
+          icon: Icon(Icons.refresh, size: 18),
           color: AppColors.textSecondary,
           tooltip: 'Refresh user list',
           onPressed: _fetchUsers,
@@ -481,8 +481,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Widget _buildErrorWidget() {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 450),
-        padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(maxWidth: 450),
+        padding: EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: AppColors.errorBg,
           borderRadius: BorderRadius.circular(12),
@@ -491,18 +491,18 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 40),
-            const SizedBox(height: 12),
+            Icon(Icons.error_outline, color: AppColors.error, size: 40),
+            SizedBox(height: 12),
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.error),
+              style: TextStyle(color: AppColors.error),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: _fetchUsers,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Try Again'),
+              icon: Icon(Icons.refresh, size: 16),
+              label: Text('Try Again'),
             ),
           ],
         ),
@@ -521,12 +521,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               size: 64,
               color: AppColors.textSecondary.withValues(alpha: 0.15),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty
                   ? 'No users found matching "$_searchQuery"'
                   : 'No users registered in this system.',
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -543,12 +543,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         children: [
           // Header row
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 SizedBox(
                   width: 50,
@@ -603,11 +603,11 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1),
           Expanded(
             child: ListView.separated(
               itemCount: _filteredUsers.length,
-              separatorBuilder: (ctx, index) => const Divider(height: 1),
+              separatorBuilder: (ctx, index) => Divider(height: 1),
               itemBuilder: (ctx, index) {
                 final user = _filteredUsers[index] as Map<String, dynamic>;
                 final username = user['username'] as String? ?? '—';
@@ -615,17 +615,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 final isSelf = username == widget.adminUsername;
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Row(
                     children: [
                       SizedBox(
                         width: 50,
                         child: Text(
                           '${index + 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 13,
                           ),
@@ -635,16 +632,16 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         flex: 2,
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.account_circle_outlined,
                               size: 18,
                               color: AppColors.textSecondary,
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 username,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textPrimary,
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w500,
@@ -653,9 +650,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               ),
                             ),
                             if (isSelf) ...[
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(
+                                padding: EdgeInsets.symmetric(
                                   horizontal: 6,
                                   vertical: 2,
                                 ),
@@ -665,7 +662,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'YOU',
                                   style: TextStyle(
                                     color: AppColors.primaryLight,
@@ -691,14 +688,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 16),
+                              icon: Icon(Icons.edit_outlined, size: 16),
                               color: AppColors.primaryLight,
                               tooltip: 'Edit User Role/Password',
                               onPressed: () => _showEditUserDialog(user),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 16),
+                              icon: Icon(Icons.delete_outline, size: 16),
                               color: isSelf
                                   ? AppColors.textDisabled
                                   : AppColors.error,
@@ -799,11 +796,11 @@ class _AddUserDialogState extends State<_AddUserDialog> {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border, width: 1),
+        side: BorderSide(color: AppColors.border, width: 1),
       ),
       child: Container(
         width: 420,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -813,7 +810,7 @@ class _AddUserDialogState extends State<_AddUserDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Add New User',
                     style: TextStyle(
                       color: AppColors.textPrimary,
@@ -822,16 +819,16 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 18),
+                    icon: Icon(Icons.close, size: 18),
                     color: AppColors.textSecondary,
                     onPressed: _isLoading ? null : () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const Divider(height: 20),
+              Divider(height: 20),
               if (_errorMessage != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: AppColors.errorBg,
                     borderRadius: BorderRadius.circular(6),
@@ -841,15 +838,12 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
-                      color: AppColors.error,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: AppColors.error, fontSize: 12),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
-              const Text(
+              Text(
                 'Username',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -857,14 +851,11 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               TextFormField(
                 controller: _usernameCtrl,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                ),
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                decoration: InputDecoration(
                   hintText: 'Enter username',
                   prefixIcon: Icon(Icons.person_outline, size: 16),
                   isDense: true,
@@ -873,8 +864,8 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                     ? 'Username is required'
                     : null,
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Password',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -882,17 +873,14 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               TextFormField(
                 controller: _passwordCtrl,
                 obscureText: _obscurePassword,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'Enter password',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 16),
+                  prefixIcon: Icon(Icons.lock_outline, size: 16),
                   isDense: true,
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -908,8 +896,8 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Password is required' : null,
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Access Role',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -917,22 +905,19 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
                 dropdownColor: AppColors.surfaceElevated,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                ),
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                decoration: InputDecoration(
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
                   isDense: true,
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'REPORT',
                     child: Text('Report (Leave Report Config only)'),
@@ -948,19 +933,19 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                   }
                 },
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
                     onPressed: _isLoading ? null : () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text('Cancel'),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     child: _isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
@@ -968,7 +953,7 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Create User'),
+                        : Text('Create User'),
                   ),
                 ],
               ),
@@ -1068,11 +1053,11 @@ class _EditUserDialogState extends State<_EditUserDialog> {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border, width: 1),
+        side: BorderSide(color: AppColors.border, width: 1),
       ),
       child: Container(
         width: 420,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -1084,23 +1069,23 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                 children: [
                   Text(
                     'Edit User: $username',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 18),
+                    icon: Icon(Icons.close, size: 18),
                     color: AppColors.textSecondary,
                     onPressed: _isLoading ? null : () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const Divider(height: 20),
+              Divider(height: 20),
               if (_errorMessage != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: AppColors.errorBg,
                     borderRadius: BorderRadius.circular(6),
@@ -1110,15 +1095,12 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
-                      color: AppColors.error,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: AppColors.error, fontSize: 12),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
-              const Text(
+              Text(
                 'Username (Read-Only)',
                 style: TextStyle(
                   color: AppColors.textMuted,
@@ -1126,21 +1108,18 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               TextFormField(
                 initialValue: username,
                 enabled: false,
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 13,
-                ),
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                decoration: InputDecoration(
                   prefixIcon: Icon(Icons.person_outline, size: 16),
                   isDense: true,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'New Password',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -1148,17 +1127,14 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               TextFormField(
                 controller: _passwordCtrl,
                 obscureText: _obscurePassword,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'Leave empty to keep current password',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 16),
+                  prefixIcon: Icon(Icons.lock_outline, size: 16),
                   isDense: true,
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -1172,8 +1148,8 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Access Role',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -1181,22 +1157,19 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
                 dropdownColor: AppColors.surfaceElevated,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                ),
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                decoration: InputDecoration(
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
                   isDense: true,
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'REPORT',
                     child: Text('Report (Leave Report Config only)'),
@@ -1212,19 +1185,19 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   }
                 },
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
                     onPressed: _isLoading ? null : () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text('Cancel'),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     child: _isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
@@ -1232,7 +1205,7 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Save Changes'),
+                        : Text('Save Changes'),
                   ),
                 ],
               ),

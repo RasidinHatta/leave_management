@@ -10,7 +10,7 @@ class Target {
   final String? ccEmails;
   final bool isActive;
 
-  const Target({
+  Target({
     required this.databaseName,
     required this.displayName,
     this.smtpServer,
@@ -24,29 +24,28 @@ class Target {
   });
 
   factory Target.fromJson(Map<String, dynamic> json) => Target(
-        databaseName: json['databaseName'] as String? ?? '',
-        displayName: json['displayName'] as String? ?? '',
-        smtpServer: json['smtpServer'] as String?,
-        smtpPort: json['smtpPort'] as int?,
-        emailUser: json['emailUser'] as String? ?? '',
-        emailPassword: json['emailPassword'] as String? ?? '',
-        emailUseTls: json['emailUseTls'] as bool? ?? false,
-        toEmails: json['toEmails'] as String? ?? '',
-        ccEmails: json['ccEmails'] as String?,
-        isActive: json['isActive'] as bool? ?? true,
-      );
+    databaseName: json['databaseName'] as String? ?? '',
+    displayName: json['displayName'] as String? ?? '',
+    smtpServer: json['smtpServer'] as String?,
+    smtpPort: json['smtpPort'] as int?,
+    emailUser: json['emailUser'] as String? ?? '',
+    emailPassword: json['emailPassword'] as String? ?? '',
+    emailUseTls: json['emailUseTls'] as bool? ?? false,
+    toEmails: json['toEmails'] as String? ?? '',
+    ccEmails: json['ccEmails'] as String?,
+    isActive: json['isActive'] as bool? ?? true,
+  );
 
   Map<String, dynamic> toJson() => {
-        'databaseName': databaseName,
-        'displayName': displayName,
-        if (smtpServer != null && smtpServer!.isNotEmpty)
-          'smtpServer': smtpServer,
-        if (smtpPort != null) 'smtpPort': smtpPort,
-        'emailUser': emailUser,
-        'emailPassword': emailPassword,
-        'emailUseTls': emailUseTls,
-        'toEmails': toEmails,
-        if (ccEmails != null && ccEmails!.isNotEmpty) 'ccEmails': ccEmails,
-        'isActive': isActive,
-      };
+    'databaseName': databaseName,
+    'displayName': displayName,
+    if (smtpServer != null && smtpServer!.isNotEmpty) 'smtpServer': smtpServer,
+    if (smtpPort != null) 'smtpPort': smtpPort,
+    'emailUser': emailUser,
+    'emailPassword': emailPassword,
+    'emailUseTls': emailUseTls,
+    'toEmails': toEmails,
+    if (ccEmails != null && ccEmails!.isNotEmpty) 'ccEmails': ccEmails,
+    'isActive': isActive,
+  };
 }

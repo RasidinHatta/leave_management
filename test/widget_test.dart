@@ -12,7 +12,7 @@ import 'package:leave_management/main.dart';
 void main() {
   testWidgets('Smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const LeaveManagementApp());
+    await tester.pumpWidget(LeaveManagementApp());
 
     // Verify that our app is mounted.
     expect(find.byType(LeaveManagementApp), findsOneWidget);

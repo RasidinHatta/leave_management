@@ -79,7 +79,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   Future<void> _fetchDatabases() async {
     _selectedDatabase = kDatabaseName;
     _databaseCtrl.text = kDatabaseName;
-    _targets = const [];
+    _targets = [];
     setState(() => _loadingDatabases = false);
   }
 
@@ -302,7 +302,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Bring Forward'),
+        title: Text('Confirm Bring Forward'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,21 +310,21 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             Text(
               'You are about to add bring-forward leave for '
               '${validRows.length} employee(s).',
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Target Database: $db\n'
               'Target Year: $_selectedYear\n'
               'Target Month: $_selectedMonth',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12,
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               '⚠️  This action cannot be undone. Proceed?',
               style: TextStyle(color: AppColors.warning, fontSize: 13),
             ),
@@ -333,11 +333,11 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
+            child: Text('Confirm'),
           ),
         ],
       ),
@@ -391,7 +391,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       SnackBar(
         content: Text(msg),
         backgroundColor: isError ? AppColors.error : null,
-        duration: const Duration(seconds: 4),
+        duration: Duration(seconds: 4),
       ),
     );
   }
@@ -404,24 +404,24 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildToolbar(),
             if (_importSummary != null) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildImportBanner(),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (_resultMessage != null) ...[
               _buildResultBanner(),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
             ],
             _buildParamsForm(),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Expanded(child: _buildTable()),
           ],
         ),
@@ -431,7 +431,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
 
   Widget _buildParamsForm() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -444,12 +444,9 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             child: DropdownButtonFormField<int>(
               isExpanded: true,
               initialValue: _selectedYear,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
               dropdownColor: AppColors.surfaceElevated,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Target Year *',
                 prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
                 isDense: true,
@@ -463,7 +460,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                   value: year,
                   child: Text(
                     year.toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
@@ -477,18 +474,15 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
               },
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           // Target Month Dropdown
           Expanded(
             child: DropdownButtonFormField<int>(
               isExpanded: true,
               initialValue: _selectedMonth,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
               dropdownColor: AppColors.surfaceElevated,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Target Month *',
                 prefixIcon: Icon(Icons.calendar_view_month_outlined, size: 18),
                 isDense: true,
@@ -516,7 +510,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                   value: month,
                   child: Text(
                     '$month - ${monthNames[month - 1]}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
@@ -541,19 +535,19 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_circle_right_outlined,
             color: AppColors.primary,
             size: 20,
           ),
         ),
-        const SizedBox(width: 12),
-        const Column(
+        SizedBox(width: 12),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -587,7 +581,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
           SizedBox(
             width: 280,
             child: _loadingDatabases
-                ? const SizedBox(
+                ? SizedBox(
                     height: 40,
                     child: Center(
                       child: SizedBox(
@@ -600,12 +594,12 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                 : DropdownButtonFormField<String>(
                     isExpanded: true,
                     initialValue: _selectedDatabase,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
                     dropdownColor: AppColors.surfaceElevated,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Target Database *',
                       prefixIcon: Icon(Icons.storage_outlined),
                       isDense: true,
@@ -622,7 +616,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                         child: Text(
                           '$dispName ($dbName)',
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,
                           ),
@@ -639,7 +633,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
           )
         else
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(8),
@@ -648,15 +642,15 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.storage_outlined,
                   size: 16,
                   color: AppColors.primaryLight,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Database: $kDatabaseName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -669,11 +663,11 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         // Export Excel
         OutlinedButton.icon(
           onPressed: _exportToExcel,
-          icon: const Icon(Icons.download_outlined, size: 16),
-          label: const Text('Export Excel'),
+          icon: Icon(Icons.download_outlined, size: 16),
+          label: Text('Export Excel'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            side: BorderSide(color: AppColors.primary),
           ),
         ),
 
@@ -681,35 +675,35 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         OutlinedButton.icon(
           onPressed: _isImporting ? null : _importFromExcel,
           icon: _isImporting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 14,
                   height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.upload_file_outlined, size: 16),
+              : Icon(Icons.upload_file_outlined, size: 16),
           label: Text(_isImporting ? 'Importing…' : 'Import Excel'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            side: BorderSide(color: AppColors.primary),
           ),
         ),
 
         // Clear
         OutlinedButton.icon(
           onPressed: _clearAll,
-          icon: const Icon(Icons.clear_all, size: 16),
-          label: const Text('Clear'),
+          icon: Icon(Icons.clear_all, size: 16),
+          label: Text('Clear'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.textSecondary,
           ),
         ),
 
         // Spacer element
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
 
         // Row count badge
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(20),
@@ -717,10 +711,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
           ),
           child: Text(
             '$validCount valid / ${_rows.length} rows',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ),
 
@@ -728,7 +719,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         ElevatedButton.icon(
           onPressed: _isLoading ? null : _submit,
           icon: _isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
@@ -736,7 +727,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                     color: Colors.white,
                   ),
                 )
-              : const Icon(Icons.send_outlined, size: 16),
+              : Icon(Icons.send_outlined, size: 16),
           label: Text(_isLoading ? 'Processing…' : 'Run Bring Forward'),
         ),
       ],
@@ -745,7 +736,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
 
   Widget _buildImportBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.successBg,
         borderRadius: BorderRadius.circular(8),
@@ -753,24 +744,20 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.check_circle_outline,
-            color: AppColors.success,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
+          Icon(Icons.check_circle_outline, color: AppColors.success, size: 16),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               _importSummary!,
-              style: const TextStyle(color: AppColors.success, fontSize: 13),
+              style: TextStyle(color: AppColors.success, fontSize: 13),
             ),
           ),
           IconButton(
             onPressed: () => setState(() => _importSummary = null),
-            icon: const Icon(Icons.close, size: 14),
+            icon: Icon(Icons.close, size: 14),
             color: AppColors.textSecondary,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+            constraints: BoxConstraints(minWidth: 20, minHeight: 20),
           ),
         ],
       ),
@@ -779,8 +766,8 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
 
   Widget _buildResultBanner() {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      duration: Duration(milliseconds: 300),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: _isSuccess ? AppColors.successBg : AppColors.errorBg,
         borderRadius: BorderRadius.circular(8),
@@ -797,7 +784,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             color: _isSuccess ? AppColors.success : AppColors.error,
             size: 16,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               _resultMessage!,
@@ -809,10 +796,10 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
           ),
           IconButton(
             onPressed: () => setState(() => _resultMessage = null),
-            icon: const Icon(Icons.close, size: 14),
+            icon: Icon(Icons.close, size: 14),
             color: AppColors.textSecondary,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+            constraints: BoxConstraints(minWidth: 20, minHeight: 20),
           ),
         ],
       ),
@@ -829,11 +816,11 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       child: Column(
         children: [
           _buildTableHeader(),
-          const Divider(height: 1),
+          Divider(height: 1),
           Expanded(
             child: ListView.separated(
               itemCount: _rows.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
+              separatorBuilder: (_, _) => Divider(height: 1),
               itemBuilder: (_, i) => _buildTableRow(i),
             ),
           ),
@@ -845,12 +832,12 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
 
   Widget _buildTableHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           SizedBox(
             width: 40,
@@ -898,72 +885,64 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     final isValid = row.isValid;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 100),
+      duration: Duration(milliseconds: 100),
       color: isValid
           ? Colors.transparent
           : AppColors.errorBg.withValues(alpha: 0.3),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
           SizedBox(
             width: 40,
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
           // Column A: empCode
           Expanded(
             child: TextField(
               controller: row.empCodeCtrl,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
                 fontFamily: 'monospace',
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Employee Code...',
                 isDense: true,
               ),
               onChanged: (_) => setState(() {}),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Column C: days
           SizedBox(
             width: 120,
             child: TextField(
               controller: row.dayCtrl,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
               ],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Days Leave',
                 isDense: true,
               ),
               onChanged: (_) => setState(() {}),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Delete
           SizedBox(
             width: 36,
             child: IconButton(
               onPressed: () => _removeRow(index),
-              icon: const Icon(Icons.delete_outline, size: 16),
+              icon: Icon(Icons.delete_outline, size: 16),
               color: AppColors.error.withValues(alpha: 0.7),
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: 'Remove row',
             ),
           ),
@@ -975,14 +954,14 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   Widget _buildAddRowFooter() {
     return InkWell(
       onTap: _addRow,
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+      borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: const BoxDecoration(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border)),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add, size: 16, color: AppColors.textSecondary),

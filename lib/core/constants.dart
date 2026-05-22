@@ -4,14 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:ini/ini.dart';
 
-const String kDbUsername = 'smartouch';
-const String kDbPassword = 'sql9903*';
+String kDbUsername = 'smartouch';
+String kDbPassword = 'sql9903*';
 
 String kServerName = '';
 String kDatabaseName = '';
 String kDriverName = 'ODBC Driver 17 for SQL Server';
 
-const String kReportDatabaseName = 'HR_REPORT_CONFIG';
+String kReportDatabaseName = 'HR_REPORT_CONFIG';
 String kReportServerName = '';
 String kReportDriverName = 'ODBC Driver 17 for SQL Server';
 
