@@ -8,6 +8,10 @@ String kServerName = '';
 String kDatabaseName = '';
 String kDriverName = 'ODBC Driver 17 for SQL Server';
 
+const String kReportDatabaseName = 'HR_REPORT_CONFIG';
+String kReportServerName = '';
+String kReportDriverName = 'ODBC Driver 17 for SQL Server';
+
 String get kOdbcConnectionString =>
     'DRIVER={$kDriverName};'
     'Server=$kServerName;'
@@ -32,6 +36,21 @@ String buildOdbcConnectionString({String? databaseName}) {
       'Persist Security Info=True;';
 }
 
+String buildReportOdbcConnectionString() {
+  return buildReportOdbcConnectionStringForDatabase(kReportDatabaseName);
+}
+
+String buildReportOdbcConnectionStringForDatabase(String databaseName) {
+  return 'DRIVER={$kReportDriverName};'
+      'Server=$kReportServerName;'
+      'Database=$databaseName;'
+      'Uid=$kDbUsername;'
+      'Pwd=$kDbPassword;'
+      'Encrypt=yes;'
+      'TrustServerCertificate=yes;'
+      'Persist Security Info=True;';
+}
+
 Future<void> loadConfig() async {
   final raw = await rootBundle.loadString('config.ini');
   final config = Config.fromString(raw);
@@ -40,6 +59,8 @@ Future<void> loadConfig() async {
   final server = config.get(section, 'Server')?.trim() ?? '';
   final database = config.get(section, 'Database')?.trim() ?? '';
   final driver = config.get(section, 'Driver')?.trim();
+  final reportServer = config.get('ReportConfig', 'Server')?.trim();
+  final reportDriver = config.get('ReportConfig', 'Driver')?.trim();
 
   if (server.isEmpty || database.isEmpty) {
     throw Exception(
@@ -52,4 +73,11 @@ Future<void> loadConfig() async {
   if (driver != null && driver.isNotEmpty) {
     kDriverName = driver;
   }
+
+  kReportServerName = reportServer != null && reportServer.isNotEmpty
+      ? reportServer
+      : server;
+  kReportDriverName = reportDriver != null && reportDriver.isNotEmpty
+      ? reportDriver
+      : kDriverName;
 }

@@ -133,6 +133,11 @@ class DirectDbClient {
             .listSync()
             .whereType<File>()
             .where((file) => file.path.toLowerCase().endsWith('.sql'))
+            .where((file) {
+              final name = file.uri.pathSegments.last.toLowerCase();
+              return name != 'setup_config_database.sql' &&
+                  name != 'sp_managereporttargets.sql';
+            })
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path));
 
@@ -221,6 +226,7 @@ SELECT
 
     await _seedUser('SUPER', 'ADMIN', databaseName);
     await _seedUser('STT', 'USER', databaseName);
+    await _seedUser('REPORT', 'REPORT', databaseName);
   }
 
   Future<void> _seedUser(
@@ -290,7 +296,7 @@ SELECT
     }
 
     return query(
-      'SELECT USERNAME as username, ROLE as role FROM dbo.LV_SYS_USER ORDER BY USERNAME ASC',
+      "SELECT USERNAME as username, ROLE as role FROM dbo.LV_SYS_USER WHERE ISNULL(ROLE, 'USER') <> 'ADMIN' ORDER BY USERNAME ASC",
       databaseName: databaseName,
     );
   }
@@ -312,6 +318,11 @@ SELECT
     }
 
     final cleanNewUser = _quote(newUsername);
+    final normalizedRole = role.toUpperCase().trim();
+    if (normalizedRole != 'USER' && normalizedRole != 'REPORT') {
+      throw const DatabaseException('Role must be USER or REPORT');
+    }
+
     final userCheck = await query(
       "SELECT 1 FROM dbo.LV_SYS_USER WHERE USERNAME = '$cleanNewUser'",
       databaseName: databaseName,
@@ -321,9 +332,8 @@ SELECT
     }
 
     final hashedPwd = BCrypt.hashpw(newPassword, BCrypt.gensalt(logRounds: 10));
-    final cleanRole = _quote(role);
     await execute(
-      "INSERT INTO dbo.LV_SYS_USER (USERNAME, PASSWD, ROLE) VALUES ('$cleanNewUser', '$hashedPwd', '$cleanRole')",
+      "INSERT INTO dbo.LV_SYS_USER (USERNAME, PASSWD, ROLE) VALUES ('$cleanNewUser', '$hashedPwd', '$normalizedRole')",
       databaseName: databaseName,
     );
 
@@ -347,27 +357,31 @@ SELECT
     }
 
     final cleanTarget = _quote(targetUsername);
+    final normalizedRole = role.toUpperCase().trim();
+    if (normalizedRole != 'USER' && normalizedRole != 'REPORT') {
+      throw const DatabaseException('Role must be USER or REPORT');
+    }
+
     final userCheck = await query(
-      "SELECT 1 FROM dbo.LV_SYS_USER WHERE USERNAME = '$cleanTarget'",
+      "SELECT 1 FROM dbo.LV_SYS_USER WHERE USERNAME = '$cleanTarget' AND ISNULL(ROLE, 'USER') <> 'ADMIN'",
       databaseName: databaseName,
     );
     if (userCheck.isEmpty) {
       throw const DatabaseException('Target user not found');
     }
 
-    final cleanRole = _quote(role);
     if (newPassword != null && newPassword.trim().isNotEmpty) {
       final hashedPwd = BCrypt.hashpw(
         newPassword,
         BCrypt.gensalt(logRounds: 10),
       );
       await execute(
-        "UPDATE dbo.LV_SYS_USER SET PASSWD = '$hashedPwd', ROLE = '$cleanRole' WHERE USERNAME = '$cleanTarget'",
+        "UPDATE dbo.LV_SYS_USER SET PASSWD = '$hashedPwd', ROLE = '$normalizedRole' WHERE USERNAME = '$cleanTarget'",
         databaseName: databaseName,
       );
     } else {
       await execute(
-        "UPDATE dbo.LV_SYS_USER SET ROLE = '$cleanRole' WHERE USERNAME = '$cleanTarget'",
+        "UPDATE dbo.LV_SYS_USER SET ROLE = '$normalizedRole' WHERE USERNAME = '$cleanTarget'",
         databaseName: databaseName,
       );
     }
@@ -395,7 +409,7 @@ SELECT
 
     final cleanTarget = _quote(targetUsername);
     final userCheck = await query(
-      "SELECT 1 FROM dbo.LV_SYS_USER WHERE USERNAME = '$cleanTarget'",
+      "SELECT 1 FROM dbo.LV_SYS_USER WHERE USERNAME = '$cleanTarget' AND ISNULL(ROLE, 'USER') <> 'ADMIN'",
       databaseName: databaseName,
     );
     if (userCheck.isEmpty) {

@@ -3,6 +3,7 @@ import 'package:leave_management/core/constants.dart';
 import 'package:leave_management/core/theme.dart';
 import 'package:leave_management/screens/bring_forward_screen.dart';
 import 'package:leave_management/screens/leave_taken_screen.dart';
+import 'package:leave_management/screens/leave_report_config_screen.dart';
 import 'package:leave_management/screens/targets_screen.dart';
 import 'package:leave_management/screens/manage_users_screen.dart';
 import 'package:leave_management/main.dart';
@@ -10,7 +11,7 @@ import 'package:leave_management/main.dart';
 // ---------------------------------------------------------------------------
 // Navigation items
 // ---------------------------------------------------------------------------
-enum _Nav { bringForward, leaveTaken, targets, manageUsers }
+enum _Nav { bringForward, leaveTaken, targets, leaveReportConfig, manageUsers }
 
 class _SidebarItem {
   final IconData icon;
@@ -48,7 +49,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (_role == 'REPORT') {
+      _current = _Nav.leaveReportConfig;
+    }
   }
+
+  String get _role => widget.role.toUpperCase().trim();
 
   static const _mainItems = [
     _SidebarItem(
@@ -121,21 +127,36 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildLogo(),
           const SizedBox(height: 4),
-          _buildSection('MAIN', _mainItems),
-          const SizedBox(height: 8),
-          if (widget.role.toUpperCase() == 'ADMIN') ...[
+          if (_role == 'ADMIN' || _role == 'USER') ...[
+            _buildSection('MAIN', _mainItems),
+            const SizedBox(height: 8),
+          ],
+          if (_role == 'ADMIN') ...[
             _buildSection('CONFIGURATION', [
               const _SidebarItem(
                 icon: Icons.storage_outlined,
                 label: 'DB Targets',
                 nav: _Nav.targets,
               ),
-              if (widget.role.toUpperCase() == 'ADMIN')
-                const _SidebarItem(
-                  icon: Icons.people_outline,
-                  label: 'Manage Users',
-                  nav: _Nav.manageUsers,
-                ),
+              const _SidebarItem(
+                icon: Icons.fact_check_outlined,
+                label: 'Leave Report Config',
+                nav: _Nav.leaveReportConfig,
+              ),
+              const _SidebarItem(
+                icon: Icons.people_outline,
+                label: 'Manage Users',
+                nav: _Nav.manageUsers,
+              ),
+            ]),
+            const SizedBox(height: 8),
+          ] else if (_role == 'REPORT') ...[
+            _buildSection('CONFIGURATION', [
+              const _SidebarItem(
+                icon: Icons.fact_check_outlined,
+                label: 'Leave Report Config',
+                nav: _Nav.leaveReportConfig,
+              ),
             ]),
             const SizedBox(height: 8),
           ],
@@ -488,6 +509,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return const LeaveTakenScreen();
       case _Nav.targets:
         return const TargetsScreen();
+      case _Nav.leaveReportConfig:
+        return const LeaveReportConfigScreen();
       case _Nav.manageUsers:
         return ManageUsersScreen(adminUsername: widget.username);
     }

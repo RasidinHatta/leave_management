@@ -69,7 +69,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         _selectedDatabase!,
       );
       setState(() {
-        _users = data;
+        _users = data
+            .where(
+              (u) =>
+                  ((u as Map<String, dynamic>)['role'] as String? ?? 'USER')
+                      .toUpperCase() !=
+                  'ADMIN',
+            )
+            .toList();
         _filterUsers();
       });
     } on DatabaseException catch (e) {
@@ -214,10 +221,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     IconData icon;
 
     switch (role.toUpperCase()) {
-      case 'ADMIN':
-        bg = const Color(0xFF312E81); // Indigo background
-        text = const Color(0xFFC7D2FE); // Indigo text
-        icon = Icons.admin_panel_settings_outlined;
+      case 'REPORT':
+        bg = const Color(0xFF78350F);
+        text = const Color(0xFFFDE68A);
+        icon = Icons.fact_check_outlined;
         break;
       default: // USER
         bg = const Color(0xFF064E3B); // Emerald background
@@ -927,8 +934,8 @@ class _AddUserDialogState extends State<_AddUserDialog> {
                 ),
                 items: const [
                   DropdownMenuItem(
-                    value: 'ADMIN',
-                    child: Text('Admin (Full access)'),
+                    value: 'REPORT',
+                    child: Text('Report (Leave Report Config only)'),
                   ),
                   DropdownMenuItem(
                     value: 'USER',
@@ -1006,7 +1013,10 @@ class _EditUserDialogState extends State<_EditUserDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedRole = widget.targetUser['role'] as String? ?? 'USER';
+    final role = (widget.targetUser['role'] as String? ?? 'USER')
+        .toUpperCase()
+        .trim();
+    _selectedRole = role == 'REPORT' ? 'REPORT' : 'USER';
   }
 
   @override
@@ -1188,8 +1198,8 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                 ),
                 items: const [
                   DropdownMenuItem(
-                    value: 'ADMIN',
-                    child: Text('Admin (Full access)'),
+                    value: 'REPORT',
+                    child: Text('Report (Leave Report Config only)'),
                   ),
                   DropdownMenuItem(
                     value: 'USER',

@@ -1,0 +1,831 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:leave_management/core/constants.dart';
+import 'package:leave_management/core/db_client.dart';
+import 'package:leave_management/core/report_config_db_client.dart';
+import 'package:leave_management/core/theme.dart';
+import 'package:leave_management/models/target.dart';
+
+class LeaveReportConfigScreen extends StatefulWidget {
+  const LeaveReportConfigScreen({super.key});
+
+  @override
+  State<LeaveReportConfigScreen> createState() =>
+      _LeaveReportConfigScreenState();
+}
+
+class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
+  final _client = ReportConfigDbClient();
+  List<Target> _targets = [];
+  bool _isLoading = false;
+  bool _isSettingUp = false;
+  bool _isTesting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTargets();
+  }
+
+  Future<void> _loadTargets() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final targets = await _client.getTargets();
+      setState(() => _targets = targets);
+    } on DatabaseException catch (e) {
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _setupConfigDatabase() async {
+    setState(() {
+      _isSettingUp = true;
+      _error = null;
+    });
+
+    try {
+      await _client.ensureSchema();
+      await _loadTargets();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report config database setup complete.')),
+      );
+    } on DatabaseException catch (e) {
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _isSettingUp = false);
+    }
+  }
+
+  Future<void> _testConnection() async {
+    setState(() {
+      _isTesting = true;
+      _error = null;
+    });
+
+    try {
+      final info = await _client.getConnectionInfo();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Connection OK: ${info['serverName'] ?? kReportServerName} / ${info['databaseName'] ?? kReportDatabaseName}',
+          ),
+        ),
+      );
+    } on DatabaseException catch (e) {
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _isTesting = false);
+    }
+  }
+
+  Future<void> _showTargetDialog(Target? existing) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _ReportTargetDialog(client: _client, existing: existing),
+    );
+    if (saved == true) {
+      await _loadTargets();
+    }
+  }
+
+  Future<void> _deleteTarget(Target target) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Report Target'),
+        content: Text('Delete ${target.displayName} (${target.databaseName})?'),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _client.deleteTarget(target.databaseName);
+      await _loadTargets();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Deleted ${target.databaseName}')));
+    } on DatabaseException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 16),
+            _buildConfigStrip(),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                  ? _buildError()
+                  : _buildTable(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.fact_check_outlined,
+            color: AppColors.primary,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Leave Report Config',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              'CRUD for HR_REPORT_CONFIG.dbo.report_targets',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ],
+        ),
+        const Spacer(),
+        OutlinedButton.icon(
+          onPressed: _isTesting ? null : _testConnection,
+          icon: _isTesting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.power_settings_new, size: 16),
+          label: Text(_isTesting ? 'Testing...' : 'Test Connection'),
+        ),
+        const SizedBox(width: 10),
+        OutlinedButton.icon(
+          onPressed: _isSettingUp ? null : _setupConfigDatabase,
+          icon: _isSettingUp
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.build_outlined, size: 16),
+          label: Text(_isSettingUp ? 'Setting Up...' : 'Setup DB'),
+        ),
+        const SizedBox(width: 10),
+        OutlinedButton.icon(
+          onPressed: _isLoading || _isSettingUp ? null : _loadTargets,
+          icon: const Icon(Icons.refresh, size: 16),
+          label: const Text('Refresh'),
+        ),
+        const SizedBox(width: 10),
+        ElevatedButton.icon(
+          onPressed: () => _showTargetDialog(null),
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Add Target'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfigStrip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.storage_outlined,
+            color: AppColors.primaryLight,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$kReportServerName / $kReportDatabaseName / $kReportDriverName',
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 560),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.errorBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.error),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _loadTargets,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTable() {
+    if (_targets.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.fact_check_outlined,
+              size: 64,
+              color: AppColors.textSecondary.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No report targets configured yet',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => _showTargetDialog(null),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add First Target'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          _buildTableHeader(),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              itemCount: _targets.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (_, index) => _buildRow(_targets[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableHeader() {
+    const style = TextStyle(
+      color: AppColors.textSecondary,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.5,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: const Row(
+        children: [
+          Expanded(flex: 2, child: Text('DATABASE', style: style)),
+          Expanded(flex: 2, child: Text('DISPLAY NAME', style: style)),
+          Expanded(flex: 2, child: Text('SMTP / USER', style: style)),
+          Expanded(flex: 3, child: Text('RECIPIENTS', style: style)),
+          SizedBox(
+            width: 72,
+            child: Text('STATUS', style: style, textAlign: TextAlign.center),
+          ),
+          SizedBox(width: 76),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRow(Target target) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              target.databaseName,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              target.displayName,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              '${target.smtpServer ?? '-'}:${target.smtpPort ?? 587}\n${target.emailUser}',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              target.toEmails,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 72,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: target.isActive
+                      ? AppColors.successBg
+                      : AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: target.isActive
+                        ? AppColors.success.withValues(alpha: 0.4)
+                        : AppColors.border,
+                  ),
+                ),
+                child: Text(
+                  target.isActive ? 'Active' : 'Inactive',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: target.isActive
+                        ? AppColors.success
+                        : AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 76,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  onPressed: () => _showTargetDialog(target),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  color: AppColors.primary,
+                  tooltip: 'Edit',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _deleteTarget(target),
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  color: AppColors.error,
+                  tooltip: 'Delete',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportTargetDialog extends StatefulWidget {
+  final ReportConfigDbClient client;
+  final Target? existing;
+
+  const _ReportTargetDialog({required this.client, this.existing});
+
+  @override
+  State<_ReportTargetDialog> createState() => _ReportTargetDialogState();
+}
+
+class _ReportTargetDialogState extends State<_ReportTargetDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _databaseCtrl;
+  late final TextEditingController _displayNameCtrl;
+  late final TextEditingController _smtpServerCtrl;
+  late final TextEditingController _smtpPortCtrl;
+  late final TextEditingController _emailUserCtrl;
+  late final TextEditingController _emailPasswordCtrl;
+  late final TextEditingController _toEmailsCtrl;
+  late final TextEditingController _ccEmailsCtrl;
+
+  bool _emailUseTls = true;
+  bool _isActive = true;
+  bool _obscurePassword = true;
+  bool _isSaving = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    _databaseCtrl = TextEditingController(text: existing?.databaseName ?? '');
+    _displayNameCtrl = TextEditingController(text: existing?.displayName ?? '');
+    _smtpServerCtrl = TextEditingController(
+      text: existing?.smtpServer ?? 'mail.smartouch.com.my',
+    );
+    _smtpPortCtrl = TextEditingController(
+      text: (existing?.smtpPort ?? 587).toString(),
+    );
+    _emailUserCtrl = TextEditingController(text: existing?.emailUser ?? '');
+    _emailPasswordCtrl = TextEditingController();
+    _toEmailsCtrl = TextEditingController(text: existing?.toEmails ?? '');
+    _ccEmailsCtrl = TextEditingController(text: existing?.ccEmails ?? '');
+    _emailUseTls = existing?.emailUseTls ?? true;
+    _isActive = existing?.isActive ?? true;
+  }
+
+  @override
+  void dispose() {
+    _databaseCtrl.dispose();
+    _displayNameCtrl.dispose();
+    _smtpServerCtrl.dispose();
+    _smtpPortCtrl.dispose();
+    _emailUserCtrl.dispose();
+    _emailPasswordCtrl.dispose();
+    _toEmailsCtrl.dispose();
+    _ccEmailsCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+
+    final target = Target(
+      databaseName: _databaseCtrl.text.trim(),
+      displayName: _displayNameCtrl.text.trim(),
+      smtpServer: _smtpServerCtrl.text.trim(),
+      smtpPort: int.tryParse(_smtpPortCtrl.text.trim()) ?? 587,
+      emailUser: _emailUserCtrl.text.trim(),
+      emailPassword: _emailPasswordCtrl.text,
+      emailUseTls: _emailUseTls,
+      toEmails: _toEmailsCtrl.text.trim(),
+      ccEmails: _ccEmailsCtrl.text.trim().isEmpty
+          ? null
+          : _ccEmailsCtrl.text.trim(),
+      isActive: _isActive,
+    );
+
+    try {
+      if (_isEdit) {
+        await widget.client.updateTarget(
+          target,
+          updatePassword: _emailPasswordCtrl.text.isNotEmpty,
+        );
+      } else {
+        await widget.client.addTarget(target);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } on DatabaseException catch (e) {
+      setState(() => _isSaving = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border, width: 1),
+      ),
+      child: Container(
+        width: 620,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      _isEdit ? 'Edit Report Target' : 'Add Report Target',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, size: 20),
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        _databaseCtrl,
+                        'Database Name',
+                        'MYPAY_LCO',
+                        enabled: !_isEdit,
+                        validator: _required,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _field(
+                        _displayNameCtrl,
+                        'Display Name',
+                        'MyPay LCO',
+                        validator: _required,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        _smtpServerCtrl,
+                        'SMTP Server',
+                        'mail.smartouch.com.my',
+                        validator: _required,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _field(
+                        _smtpPortCtrl,
+                        'SMTP Port',
+                        '587',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: _required,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        _emailUserCtrl,
+                        'Email User',
+                        'user@mail.com',
+                        validator: _required,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _field(
+                        _emailPasswordCtrl,
+                        'Email Password',
+                        _isEdit ? '(leave blank to keep current)' : 'password',
+                        obscureText: _obscurePassword,
+                        validator: _isEdit ? null : _required,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _field(
+                  _toEmailsCtrl,
+                  'To Emails',
+                  'recipient@mail.com, another@mail.com',
+                  validator: _required,
+                ),
+                const SizedBox(height: 12),
+                _field(_ccEmailsCtrl, 'CC Emails', 'optional@mail.com'),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _switch(
+                      label: 'Use TLS',
+                      value: _emailUseTls,
+                      onChanged: (value) =>
+                          setState(() => _emailUseTls = value),
+                    ),
+                    const SizedBox(width: 24),
+                    _switch(
+                      label: 'Active',
+                      value: _isActive,
+                      onChanged: (value) => setState(() => _isActive = value),
+                    ),
+                    const Spacer(),
+                    OutlinedButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: _isSaving ? null : _save,
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(_isEdit ? 'Save' : 'Add'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _required(String? value) {
+    return value == null || value.trim().isEmpty ? 'Required' : null;
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String label,
+    String hint, {
+    bool enabled = true,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          enabled: enabled,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          validator: validator,
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: hint,
+            suffixIcon: suffixIcon,
+            isDense: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _switch({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Switch(value: value, onChanged: _isSaving ? null : onChanged),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(color: AppColors.textPrimary)),
+      ],
+    );
+  }
+}
