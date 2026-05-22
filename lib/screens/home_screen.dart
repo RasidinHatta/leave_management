@@ -1,25 +1,26 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:leave_management/core/api_client.dart';
 import 'package:leave_management/core/constants.dart';
 import 'package:leave_management/core/theme.dart';
 import 'package:leave_management/screens/bring_forward_screen.dart';
 import 'package:leave_management/screens/leave_taken_screen.dart';
 import 'package:leave_management/screens/targets_screen.dart';
+import 'package:leave_management/screens/manage_users_screen.dart';
 import 'package:leave_management/main.dart';
 
 // ---------------------------------------------------------------------------
 // Navigation items
 // ---------------------------------------------------------------------------
-enum _Nav { bringForward, leaveTaken, targets }
+enum _Nav { bringForward, leaveTaken, targets, manageUsers }
 
 class _SidebarItem {
   final IconData icon;
   final String label;
   final _Nav nav;
-  const _SidebarItem(
-      {required this.icon, required this.label, required this.nav});
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.nav,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -28,8 +29,14 @@ class _SidebarItem {
 class HomeScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final String username;
+  final String role;
 
-  const HomeScreen({super.key, required this.onLogout, required this.username});
+  const HomeScreen({
+    super.key,
+    required this.onLogout,
+    required this.username,
+    required this.role,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -37,35 +44,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   _Nav _current = _Nav.bringForward;
-  final _apiClient = ApiClient();
 
   @override
   void initState() {
     super.initState();
-    if (widget.username.toUpperCase() == 'REPORT') {
-      _current = _Nav.targets;
-    }
   }
 
   static const _mainItems = [
     _SidebarItem(
-        icon: Icons.arrow_circle_right_outlined,
-        label: 'Bring Forward',
-        nav: _Nav.bringForward),
+      icon: Icons.arrow_circle_right_outlined,
+      label: 'Bring Forward',
+      nav: _Nav.bringForward,
+    ),
     _SidebarItem(
-        icon: Icons.event_busy_outlined,
-        label: 'Leave Taken',
-        nav: _Nav.leaveTaken),
+      icon: Icons.event_busy_outlined,
+      label: 'Leave Taken',
+      nav: _Nav.leaveTaken,
+    ),
   ];
 
-  static const _configItems = [
-    _SidebarItem(
-        icon: Icons.storage_outlined,
-        label: 'DB Targets',
-        nav: _Nav.targets),
-  ];
-
-  Future<void> _confirmLogoutAndClose() async {
+  Future<void> _confirmLogout() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -82,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Logout & Exit'),
+            child: const Text('Logout'),
           ),
         ],
       ),
@@ -90,7 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirmed == true) {
       widget.onLogout();
-      exit(0);
     }
   }
 
@@ -100,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        _confirmLogoutAndClose();
+        _confirmLogout();
       },
       child: Scaffold(
         body: Row(
@@ -124,12 +121,22 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildLogo(),
           const SizedBox(height: 4),
-          if (widget.username.toUpperCase() != 'REPORT') ...[
-            _buildSection('MAIN', _mainItems),
-            const SizedBox(height: 8),
-          ],
-          if (widget.username.toUpperCase() == 'SUPERADMIN' || widget.username.toUpperCase() == 'REPORT') ...[
-            _buildSection('CONFIGURATION', _configItems),
+          _buildSection('MAIN', _mainItems),
+          const SizedBox(height: 8),
+          if (widget.role.toUpperCase() == 'ADMIN') ...[
+            _buildSection('CONFIGURATION', [
+              const _SidebarItem(
+                icon: Icons.storage_outlined,
+                label: 'DB Targets',
+                nav: _Nav.targets,
+              ),
+              if (widget.role.toUpperCase() == 'ADMIN')
+                const _SidebarItem(
+                  icon: Icons.people_outline,
+                  label: 'Manage Users',
+                  nav: _Nav.manageUsers,
+                ),
+            ]),
             const SizedBox(height: 8),
           ],
           const Spacer(),
@@ -155,22 +162,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(Icons.event_available,
-                color: Colors.white, size: 18),
+            child: const Icon(
+              Icons.event_available,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 10),
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('HR Leave',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2)),
-              Text('Management',
-                  style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 11)),
+              Text(
+                'HR Leave',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                'Management',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              ),
             ],
           ),
         ],
@@ -184,12 +198,15 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
-          child: Text(title,
-              style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8)),
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
         ),
         ...items.map(_buildNavBtn),
       ],
@@ -205,12 +222,9 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.surface
-                : Colors.transparent,
+            color: selected ? AppColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -227,13 +241,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   item.label,
                   style: TextStyle(
-                      color: selected
-                          ? AppColors.primaryLight
-                          : AppColors.textSecondary,
-                      fontSize: 13,
-                      fontWeight: selected
-                          ? FontWeight.w600
-                          : FontWeight.w400),
+                    color: selected
+                        ? AppColors.primaryLight
+                        : AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
                 ),
               ),
               if (selected)
@@ -256,7 +269,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border))),
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,14 +305,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 7,
                 height: 7,
                 decoration: const BoxDecoration(
-                    color: AppColors.success, shape: BoxShape.circle),
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  Uri.tryParse(kBaseUrl)?.authority ?? kBaseUrl,
+                  '$kServerName / $kDriverName',
                   style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 11),
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -316,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 12),
               IconButton(
-                onPressed: _confirmLogoutAndClose,
+                onPressed: _confirmLogout,
                 icon: const Icon(
                   Icons.logout_outlined,
                   size: 16,
@@ -358,9 +376,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'Settings',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
@@ -376,9 +394,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'App Font Size',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 ValueListenableBuilder<double>(
@@ -396,10 +414,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           value: factor,
                           isExpanded: true,
                           dropdownColor: AppColors.surface,
-                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textPrimary,
-                              ),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: AppColors.textSecondary,
+                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.textPrimary),
                           items: const [
                             DropdownMenuItem(
                               value: 0.75,
@@ -413,10 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               value: 1.00,
                               child: Text('Medium'),
                             ),
-                            DropdownMenuItem(
-                              value: 1.15,
-                              child: Text('Large'),
-                            ),
+                            DropdownMenuItem(value: 1.15, child: Text('Large')),
                           ],
                           onChanged: (val) {
                             if (val != null) {
@@ -436,7 +453,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.onPrimary,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -445,9 +465,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       'Close',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.onPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: AppColors.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -463,11 +483,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildContent() {
     switch (_current) {
       case _Nav.bringForward:
-        return BringForwardScreen(apiClient: _apiClient);
+        return const BringForwardScreen();
       case _Nav.leaveTaken:
-        return LeaveTakenScreen(apiClient: _apiClient);
+        return const LeaveTakenScreen();
       case _Nav.targets:
-        return TargetsScreen(apiClient: _apiClient);
+        return const TargetsScreen();
+      case _Nav.manageUsers:
+        return ManageUsersScreen(adminUsername: widget.username);
     }
   }
 }

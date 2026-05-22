@@ -45,3 +45,10 @@ add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
   "${CMAKE_SOURCE_DIR}/../config.ini"
   "$<TARGET_FILE_DIR:${BINARY_NAME}>/"
 )
+
+# Copy startup SQL scripts to the output directory after the build
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  "${CMAKE_SOURCE_DIR}/../stored_procedure"
+  "$<TARGET_FILE_DIR:${BINARY_NAME}>/stored_procedure"
+)

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:leave_management/core/api_client.dart';
 import 'package:leave_management/core/theme.dart';
 import 'package:leave_management/core/constants.dart';
+import 'package:leave_management/core/db_client.dart';
 
 class LoginScreen extends StatefulWidget {
-  final Function(String username) onLoginSuccess;
+  final Function(String username, String role) onLoginSuccess;
 
   const LoginScreen({super.key, required this.onLoginSuccess});
 
@@ -41,31 +41,30 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = _passwordCtrl.text;
 
       final dbName = kDatabaseName.isNotEmpty ? kDatabaseName : 'MYPAY_JSM';
-      final client = ApiClient();
-      final response = await client.leaveLogin(username, password, dbName);
+      final directDb = DirectDbClient();
+      final response = await directDb.leaveLogin(username, password, dbName);
 
       if (!mounted) return;
 
       if (response['success'] == true) {
         setState(() => _isLoading = false);
-        widget.onLoginSuccess(username);
+        widget.onLoginSuccess(username, response['role'] ?? 'USER');
       } else {
         setState(() {
           _isLoading = false;
           _errorMessage = 'Invalid username or password';
         });
       }
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'An unexpected error occurred: ${e.toString()}';
+        // Clean up exception string prefix if any
+        var msg = e.toString();
+        if (msg.startsWith('Exception: ')) {
+          msg = msg.substring('Exception: '.length);
+        }
+        _errorMessage = msg;
       });
     }
   }

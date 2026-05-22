@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:excel/excel.dart' hide Border;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:leave_management/core/api_client.dart';
+
+import 'package:leave_management/core/db_client.dart';
 import 'package:leave_management/core/theme.dart';
 import 'package:leave_management/core/constants.dart';
 
@@ -59,9 +60,7 @@ class _LeaveRow {
 // Screen
 // ---------------------------------------------------------------------------
 class LeaveTakenScreen extends StatefulWidget {
-  final ApiClient apiClient;
-
-  const LeaveTakenScreen({super.key, required this.apiClient});
+  const LeaveTakenScreen({super.key});
 
   @override
   State<LeaveTakenScreen> createState() => _LeaveTakenScreenState();
@@ -69,6 +68,7 @@ class LeaveTakenScreen extends StatefulWidget {
 
 class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
   final List<_LeaveRow> _rows = [];
+  final DirectDbClient _dbClient = DirectDbClient();
   final _databaseCtrl = TextEditingController();
 
   List<Map<String, dynamic>> _targets = [];
@@ -97,40 +97,21 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
   }
 
   Future<void> _fetchDatabases() async {
-    setState(() => _loadingDatabases = true);
-    try {
-      final data = await widget.apiClient.getTargets();
-      setState(() {
-        _targets = data
-            .where((t) => t['isActive'] == true || t['isActive'] == 1)
-            .toList();
-        if (_targets.isNotEmpty) {
-          _selectedDatabase = _targets.first['databaseName'] as String;
-          _databaseCtrl.text = _selectedDatabase!;
-        }
-      });
-      if (_selectedDatabase != null) {
-        await _fetchLeaveTypes(_selectedDatabase);
-      }
-    } catch (e) {
-      _showSnack('Failed to load database targets: $e', isError: true);
-    } finally {
-      setState(() => _loadingDatabases = false);
-    }
+    // Since the leave API is removed, we do not fetch database targets from a backend.
+    // The UI will rely on a pre-configured database name (kDatabaseName) or remain empty.
+    setState(() => _loadingDatabases = false);
+    _targets = [];
   }
 
   Future<void> _fetchLeaveTypes(String? db) async {
     setState(() => _loadingLeaveTypes = true);
     try {
-      final list = await widget.apiClient.getLeaveTypes(database: db);
+      final list = await _dbClient.getLeaveTypes(db ?? kDatabaseName);
       setState(() {
         _leaveTypes = list.map<Map<String, String>>((t) {
           final code = (t['lvCode'] as String? ?? '').toUpperCase().trim();
           final desc = (t['lvDesc'] as String? ?? '').trim();
-          return {
-            'code': code,
-            'desc': desc,
-          };
+          return {'code': code, 'desc': desc};
         }).toList();
       });
     } catch (e) {
@@ -289,10 +270,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         final lvCodeUpper = lvCode.toUpperCase();
         final hasCode = _leaveTypes.any((t) => t['code'] == lvCodeUpper);
         if (!hasCode) {
-          _leaveTypes.add({
-            'code': lvCodeUpper,
-            'desc': lvCodeUpper,
-          });
+          _leaveTypes.add({'code': lvCodeUpper, 'desc': lvCodeUpper});
         }
 
         newRows.add(
@@ -438,8 +416,10 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     for (final row in validRows) {
       final date = row.dateCtrl.text.trim();
       if (DateTime.tryParse(date) == null) {
-        _showSnack('Invalid date format: "$date". Must be YYYY-MM-DD.',
-            isError: true);
+        _showSnack(
+          'Invalid date format: "$date". Must be YYYY-MM-DD.',
+          isError: true,
+        );
         return;
       }
     }
@@ -450,14 +430,14 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     });
 
     try {
-      final result = await widget.apiClient.addLeaveTaken(
+      final result = await _dbClient.addLeaveTaken(
         database: db,
         list: validRows.map((r) => r.toMap()).toList(),
       );
       setState(() {
         _isSuccess = true;
-        _resultMessage = result['message'] as String? ??
-            'Leave records added successfully!';
+        _resultMessage =
+            result['message'] as String? ?? 'Leave records added successfully!';
 
         // Clear all table rows and restart with one blank row
         for (final row in _rows) {
@@ -467,7 +447,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         _rows.add(_LeaveRow());
         _importSummary = null;
       });
-    } on ApiException catch (e) {
+    } on DatabaseException catch (e) {
       setState(() {
         _isSuccess = false;
         _resultMessage = e.message;
@@ -583,14 +563,18 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                     isExpanded: true,
                     initialValue: _selectedDatabase,
                     style: const TextStyle(
-                        color: AppColors.textPrimary, fontSize: 13),
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
                     dropdownColor: AppColors.surfaceElevated,
                     decoration: const InputDecoration(
                       labelText: 'Target Database *',
                       prefixIcon: Icon(Icons.storage_outlined),
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     items: _targets.map((t) {
                       final dbName = t['databaseName'] as String;
@@ -601,7 +585,9 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                           '$dispName ($dbName)',
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              color: AppColors.textPrimary, fontSize: 13),
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -627,7 +613,11 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.storage_outlined, size: 16, color: AppColors.primaryLight),
+                const Icon(
+                  Icons.storage_outlined,
+                  size: 16,
+                  color: AppColors.primaryLight,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Database: $kDatabaseName',
@@ -953,7 +943,8 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () async {
-                    final curr = DateTime.tryParse(row.dateCtrl.text.trim()) ??
+                    final curr =
+                        DateTime.tryParse(row.dateCtrl.text.trim()) ??
                         DateTime.now();
                     final chosen = await showDatePicker(
                       context: context,
@@ -969,7 +960,9 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                               surface: AppColors.surfaceElevated,
                               onSurface: AppColors.textPrimary,
                             ),
-                            dialogTheme: const DialogThemeData(backgroundColor: AppColors.background),
+                            dialogTheme: const DialogThemeData(
+                              backgroundColor: AppColors.background,
+                            ),
                           ),
                           child: child!,
                         );
@@ -1005,13 +998,20 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                 : InputDecorator(
                     decoration: const InputDecoration(
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: _leaveTypes.any((t) => t['code'] == row.codeCtrl.text.trim().toUpperCase())
+                        value:
+                            _leaveTypes.any(
+                              (t) =>
+                                  t['code'] ==
+                                  row.codeCtrl.text.trim().toUpperCase(),
+                            )
                             ? row.codeCtrl.text.trim().toUpperCase()
                             : null,
                         style: const TextStyle(

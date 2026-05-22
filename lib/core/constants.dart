@@ -1,66 +1,55 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:ini/ini.dart';
 
-String kBaseUrl = 'http://localhost:3000';
-String kConnectionString = '';
+const String kDbUsername = 'smartouch';
+const String kDbPassword = 'sql9903*';
 
-String get kDatabaseName => getDatabaseNameFromConnectionString(kConnectionString);
+String kServerName = '';
+String kDatabaseName = '';
+String kDriverName = 'ODBC Driver 17 for SQL Server';
 
-String getDatabaseNameFromConnectionString(String connStr) {
-  final parts = connStr.split(';');
-  for (final part in parts) {
-    final kv = part.split('=');
-    if (kv.length == 2) {
-      final key = kv[0].trim().toLowerCase();
-      final val = kv[1].trim();
-      if (key == 'initial catalog' || key == 'database') {
-        return val;
-      }
-    }
-  }
-  return '';
+String get kOdbcConnectionString =>
+    'DRIVER={$kDriverName};'
+    'Server=$kServerName;'
+    'Database=$kDatabaseName;'
+    'Uid=$kDbUsername;'
+    'Pwd=$kDbPassword;'
+    'Encrypt=yes;'
+    'TrustServerCertificate=yes;'
+    'Persist Security Info=True;';
+
+String buildOdbcConnectionString({String? databaseName}) {
+  final dbName = (databaseName != null && databaseName.isNotEmpty)
+      ? databaseName
+      : kDatabaseName;
+  return 'DRIVER={$kDriverName};'
+      'Server=$kServerName;'
+      'Database=$dbName;'
+      'Uid=$kDbUsername;'
+      'Pwd=$kDbPassword;'
+      'Encrypt=yes;'
+      'TrustServerCertificate=yes;'
+      'Persist Security Info=True;';
 }
 
 Future<void> loadConfig() async {
-  if (kIsWeb) return;
-  try {
-    final exeDir = File(Platform.resolvedExecutable).parent.path;
-    var file = File('config.ini');
+  final raw = await rootBundle.loadString('config.ini');
+  final config = Config.fromString(raw);
 
-    if (!await file.exists()) {
-      file = File('$exeDir/config.ini');
-    }
+  const section = 'DatabaseConfig';
+  final server = config.get(section, 'Server')?.trim() ?? '';
+  final database = config.get(section, 'Database')?.trim() ?? '';
+  final driver = config.get(section, 'Driver')?.trim();
 
-    if (!await file.exists()) {
-      await file.writeAsString('''[API]
-# Change the baseUrl to point to the backend API server.
-baseUrl = http://localhost:3000
+  if (server.isEmpty || database.isEmpty) {
+    throw Exception(
+      'config.ini must contain Server and Database under [DatabaseConfig].',
+    );
+  }
 
-[CONNECTION]
-;STRING=Provider=SQLNCLI11;Persist Security Info=True;Initial Catalog=MYPAY_KIN;Data Source=DIN-STT
-STRING=Provider=SQLNCLI11;Persist Security Info=True;Initial Catalog=MYPAY_JSM;Data Source=v1soho.com,1500
-''');
-    } else {
-      final lines = await file.readAsLines();
-      for (var line in lines) {
-        line = line.trim();
-        if (line.isEmpty || line.startsWith(';') || line.startsWith('#') || line.startsWith('[')) {
-          continue;
-        }
-        if (line.contains('=')) {
-          final parts = line.split('=');
-          final key = parts[0].trim().toLowerCase();
-          final val = parts.sublist(1).join('=').trim();
-          if (key == 'baseurl') {
-            kBaseUrl = val;
-          } else if (key == 'string') {
-            kConnectionString = val;
-          }
-        }
-      }
-    }
-  } catch (e) {
-    debugPrint('Failed to load config.ini: $e');
+  kServerName = server;
+  kDatabaseName = database;
+  if (driver != null && driver.isNotEmpty) {
+    kDriverName = driver;
   }
 }
-

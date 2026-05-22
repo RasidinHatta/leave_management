@@ -4,9 +4,9 @@ import 'package:excel/excel.dart' hide Border;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:leave_management/core/api_client.dart';
 import 'package:leave_management/core/theme.dart';
 import 'package:leave_management/core/constants.dart';
+import 'package:leave_management/core/db_client.dart';
 
 // ---------------------------------------------------------------------------
 // Data model for a single BF row (editable via controllers)
@@ -41,9 +41,7 @@ class _BfRow {
 // Screen
 // ---------------------------------------------------------------------------
 class BringForwardScreen extends StatefulWidget {
-  final ApiClient apiClient;
-
-  const BringForwardScreen({super.key, required this.apiClient});
+  const BringForwardScreen({super.key});
 
   @override
   State<BringForwardScreen> createState() => _BringForwardScreenState();
@@ -79,21 +77,10 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   }
 
   Future<void> _fetchDatabases() async {
-    setState(() => _loadingDatabases = true);
-    try {
-      final data = await widget.apiClient.getTargets();
-      setState(() {
-        _targets = data.where((t) => t['isActive'] == true || t['isActive'] == 1).toList();
-        if (_targets.isNotEmpty) {
-          _selectedDatabase = _targets.first['databaseName'] as String;
-          _databaseCtrl.text = _selectedDatabase!;
-        }
-      });
-    } catch (e) {
-      _showSnack('Failed to load database targets: $e', isError: true);
-    } finally {
-      setState(() => _loadingDatabases = false);
-    }
+    _selectedDatabase = kDatabaseName;
+    _databaseCtrl.text = kDatabaseName;
+    _targets = const [];
+    setState(() => _loadingDatabases = false);
   }
 
   @override
@@ -297,10 +284,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   Future<void> _submit() async {
     final db = _databaseCtrl.text.trim();
     if (db.isEmpty) {
-      _showSnack(
-        'Target Database is required.',
-        isError: true,
-      );
+      _showSnack('Target Database is required.', isError: true);
       return;
     }
 
@@ -367,7 +351,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     });
 
     try {
-      final result = await widget.apiClient.addBringForwardLeave(
+      final result = await DirectDbClient().addBringForwardLeave(
         database: db,
         year: _selectedYear,
         month: _selectedMonth,
@@ -378,7 +362,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         _resultMessage =
             result['message'] as String? ??
             'Bring forward leave added successfully!';
-        
+
         // Clear all table rows and restart with one blank row
         for (final row in _rows) {
           row.dispose();
@@ -387,10 +371,14 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         _rows.add(_BfRow());
         _importSummary = null;
       });
-    } on ApiException catch (e) {
+    } catch (e) {
       setState(() {
         _isSuccess = false;
-        _resultMessage = e.message;
+        var msg = e.toString();
+        if (msg.startsWith('Exception: ')) {
+          msg = msg.substring('Exception: '.length);
+        }
+        _resultMessage = msg;
       });
     } finally {
       setState(() => _isLoading = false);
@@ -456,20 +444,29 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             child: DropdownButtonFormField<int>(
               isExpanded: true,
               initialValue: _selectedYear,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
               dropdownColor: AppColors.surfaceElevated,
               decoration: const InputDecoration(
                 labelText: 'Target Year *',
                 prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               items: [2024, 2025, 2026, 2027, 2028, 2029, 2030].map((year) {
                 return DropdownMenuItem<int>(
                   value: year,
                   child: Text(
                     year.toString(),
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
                   ),
                 );
               }).toList(),
@@ -486,24 +483,43 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             child: DropdownButtonFormField<int>(
               isExpanded: true,
               initialValue: _selectedMonth,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
               dropdownColor: AppColors.surfaceElevated,
               decoration: const InputDecoration(
                 labelText: 'Target Month *',
                 prefixIcon: Icon(Icons.calendar_view_month_outlined, size: 18),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               items: List.generate(12, (index) => index + 1).map((month) {
                 final monthNames = [
-                  'January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December'
+                  'January',
+                  'February',
+                  'March',
+                  'April',
+                  'May',
+                  'June',
+                  'July',
+                  'August',
+                  'September',
+                  'October',
+                  'November',
+                  'December',
                 ];
                 return DropdownMenuItem<int>(
                   value: month,
                   child: Text(
                     '$month - ${monthNames[month - 1]}',
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
                   ),
                 );
               }).toList(),
@@ -584,13 +600,19 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                 : DropdownButtonFormField<String>(
                     isExpanded: true,
                     initialValue: _selectedDatabase,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
                     dropdownColor: AppColors.surfaceElevated,
                     decoration: const InputDecoration(
                       labelText: 'Target Database *',
                       prefixIcon: Icon(Icons.storage_outlined),
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     items: _targets.map((t) {
                       final dbName = t['databaseName'] as String;
@@ -600,7 +622,10 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                         child: Text(
                           '$dispName ($dbName)',
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -623,7 +648,11 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.storage_outlined, size: 16, color: AppColors.primaryLight),
+                const Icon(
+                  Icons.storage_outlined,
+                  size: 16,
+                  color: AppColors.primaryLight,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Database: $kDatabaseName',
