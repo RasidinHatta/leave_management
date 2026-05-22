@@ -1,12 +1,3 @@
-USE [MYPAY_LCO]
-GO
-
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
 CREATE OR ALTER PROCEDURE [dbo].[sp_AddLeaveRecords_Bulk]
 (
     @List dbo.LeaveImportList READONLY
