@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:ini/ini.dart';
 
@@ -52,7 +55,7 @@ String buildReportOdbcConnectionStringForDatabase(String databaseName) {
 }
 
 Future<void> loadConfig() async {
-  final raw = await rootBundle.loadString('config.ini');
+  final raw = await _loadConfigText();
   final config = Config.fromString(raw);
 
   const section = 'DatabaseConfig';
@@ -80,4 +83,16 @@ Future<void> loadConfig() async {
   kReportDriverName = reportDriver != null && reportDriver.isNotEmpty
       ? reportDriver
       : kDriverName;
+}
+
+Future<String> _loadConfigText() async {
+  if (!kIsWeb) {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final externalConfig = File('$exeDir${Platform.pathSeparator}config.ini');
+    if (await externalConfig.exists()) {
+      return externalConfig.readAsString();
+    }
+  }
+
+  return rootBundle.loadString('config.ini');
 }
