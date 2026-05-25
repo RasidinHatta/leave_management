@@ -123,39 +123,67 @@ Important:
 
 Use this method when preparing a new release package.
 
-1. Build the Windows release:
+1. Set the app version in `pubspec.yaml`:
+
+   ```yaml
+   version: 1.0.0+1
+   ```
+
+   The part before `+` is the release version. For example, `1.0.0+1` creates a zip ending with `1.0.0`.
+
+2. Build the Windows release:
 
    ```powershell
    flutter build windows --release
    ```
 
-2. Open the release output:
+3. Open the release output:
 
    ```text
    build\windows\x64\runner\Release
    ```
 
-3. Make sure `config.ini` exists in the same folder as:
+4. Make sure `config.ini` exists in the same folder as:
 
    ```text
    leave_management.exe
    ```
 
-4. Edit `config.ini` for the production SQL Server and database.
+5. Edit `config.ini` for the production SQL Server and database.
 
-5. Run:
+6. Run:
 
    ```text
    leave_management.exe
    ```
 
-6. Create a zip from the contents of the `Release` folder:
+7. Create a zip from the contents of the `Release` folder:
 
    ```powershell
-   Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath releases\leave_management_windows_release.zip -Force
+   .\tool\zip_windows_release.ps1
    ```
 
-7. Upload `releases\leave_management_windows_release.zip` to GitHub Releases.
+   The script reads the version from `pubspec.yaml` automatically.
+
+   To override the version manually:
+
+   ```powershell
+   .\tool\zip_windows_release.ps1 -Version 1.0.1
+   ```
+
+   To build and zip in one command:
+
+   ```powershell
+   .\tool\zip_windows_release.ps1 -Build
+   ```
+
+8. Upload the generated zip from `releases\` to GitHub Releases.
+
+   Example output:
+
+   ```text
+   releases\leave_management_windows_release_1.0.0.zip
+   ```
 
 Do not commit the full `build\` folder to Git. Flutter build output is ignored by `.gitignore` on purpose.
 
