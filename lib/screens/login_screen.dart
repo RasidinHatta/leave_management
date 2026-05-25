@@ -108,23 +108,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: 42,
-                          height: 42,
+                          width: 50,
+                          height: 50,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primaryDark,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: AppColors.primary,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            Icons.event_available,
-                            color: Colors.white,
-                            size: 22,
+                          clipBehavior: Clip.antiAlias,
+                          child: Padding(
+                            padding: EdgeInsets.all(7),
+                            child: Image.asset(
+                              'windows/runner/resources/app_icon.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                         SizedBox(width: 12),

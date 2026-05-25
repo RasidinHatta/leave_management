@@ -184,17 +184,20 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(9),
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.event_available, color: Colors.white, size: 18),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: EdgeInsets.all(6),
+              child: Image.asset(
+                'windows/runner/resources/app_icon.png',
+                fit: BoxFit.contain,
+              ),
+            ),
           ),
           SizedBox(width: 10),
           Column(
