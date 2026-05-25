@@ -63,8 +63,8 @@ Notes:
 
 - `[DatabaseConfig]` controls normal leave operations.
 - `[ReportConfig]` controls only the Leave Report Config menu.
-- `[ReportConfig] Server` is the SQL Server location where the report configuration data is stored.
-- The report config database name is fixed to `HR_REPORT_CONFIG`.
+- `[ReportConfig] Server` is configurable. Replace `#REPORT SERVER,PORT` with the SQL Server location where the report configuration data is stored.
+- The report config database name is **fixed** to `HR_REPORT_CONFIG`. Do not add a `Database=` line under `[ReportConfig]`; the app always uses `HR_REPORT_CONFIG` for this menu.
 - If using a custom SQL port, set `Server=SERVER_NAME,PORT`.
 - Keep the placeholder format as `Server=#REPORT SERVER,PORT` until replacing it with the real report SQL Server and port.
 
