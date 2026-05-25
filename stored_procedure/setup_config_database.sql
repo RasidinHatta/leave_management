@@ -3,8 +3,6 @@
 -- HR Report Automation — Central Configuration Database
 -- =============================================================================
 -- Run this script ONCE on the SQL Server to create the config store.
--- Connection: v1soho.com,1500  (same server as MYPAY_LCO)
--- Auth: smartouch / sql9903*
 -- =============================================================================
 
 USE master;
