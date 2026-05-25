@@ -211,7 +211,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     setState(() => _isImporting = true);
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx'],
         dialogTitle: 'Select Leave Taken Excel File',
@@ -363,7 +363,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         return;
       }
 
-      String? outputFile = await FilePicker.platform.saveFile(
+      String? outputFile = await FilePicker.saveFile(
         dialogTitle: 'Save Excel Template',
         fileName: 'Leave_Taken_Template.xlsx',
         allowedExtensions: ['xlsx'],

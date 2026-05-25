@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:leave_management/core/app_settings.dart';
 import 'package:leave_management/core/constants.dart';
 import 'package:leave_management/core/db_client.dart';
 import 'package:leave_management/core/theme.dart';
@@ -8,6 +9,10 @@ import 'package:leave_management/screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await loadConfig();
+  final appSettings = await AppSettings.load();
+  LeaveManagementApp.fontSizeNotifier.value = appSettings.fontScale;
+  LeaveManagementApp.appearanceNotifier.value = appSettings.appearance;
+  LeaveManagementApp.enableSettingsPersistence();
   DirectDbClient().enableDiagnostics();
   try {
     await DirectDbClient().runStartupStoredProcedures();
@@ -25,6 +30,24 @@ class LeaveManagementApp extends StatefulWidget {
   );
   static final ValueNotifier<AppAppearance> appearanceNotifier =
       ValueNotifier<AppAppearance>(const AppAppearance());
+  static bool _settingsPersistenceEnabled = false;
+
+  static void enableSettingsPersistence() {
+    if (_settingsPersistenceEnabled) return;
+    _settingsPersistenceEnabled = true;
+
+    void saveSettings() {
+      AppSettings.save(
+        AppSettingsData(
+          appearance: appearanceNotifier.value,
+          fontScale: fontSizeNotifier.value,
+        ),
+      );
+    }
+
+    appearanceNotifier.addListener(saveSettings);
+    fontSizeNotifier.addListener(saveSettings);
+  }
 
   @override
   State<LeaveManagementApp> createState() => _LeaveManagementAppState();

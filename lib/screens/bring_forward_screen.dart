@@ -124,7 +124,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     setState(() => _isImporting = true);
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx'],
         dialogTitle: 'Select Bring-Forward Excel File',
@@ -244,7 +244,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         return;
       }
 
-      String? outputFile = await FilePicker.platform.saveFile(
+      String? outputFile = await FilePicker.saveFile(
         dialogTitle: 'Save Excel Template',
         fileName: 'Bring_Forward_Template.xlsx',
         allowedExtensions: ['xlsx'],
