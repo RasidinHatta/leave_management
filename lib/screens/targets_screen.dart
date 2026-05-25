@@ -115,7 +115,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
 
   Widget _buildConfigCard() {
     return Container(
-      width: 560,
+      width: double.infinity,
       padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -137,9 +137,10 @@ class _TargetsScreenState extends State<TargetsScreen> {
 
   Widget _row(String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 100,
+          width: 120,
           child: Text(
             label,
             style: TextStyle(
@@ -150,12 +151,13 @@ class _TargetsScreenState extends State<TargetsScreen> {
           ),
         ),
         Expanded(
-          child: Text(
+          child: SelectableText(
             value,
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
               fontFamily: 'monospace',
+              height: 1.35,
             ),
           ),
         ),
@@ -165,7 +167,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
 
   Widget _buildResultBanner() {
     return Container(
-      width: 560,
+      width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: _isSuccess ? AppColors.successBg : AppColors.errorBg,
