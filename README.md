@@ -27,7 +27,7 @@ Windows desktop application for managing leave operations directly against SQL S
 - Windows 10 or later.
 - SQL Server reachable from the client PC.
 - ODBC Driver 17 for SQL Server installed on the client PC.
-- Flutter SDK only if building from source.
+- Flutter SDK only if building from source. End users who download the release zip do not need Flutter.
 
 Download the Microsoft ODBC driver from Microsoft if the target PC does not already have `ODBC Driver 17 for SQL Server`.
 
@@ -55,7 +55,7 @@ Database=MYPAY_LCO
 Driver=ODBC Driver 17 for SQL Server
 
 [ReportConfig]
-Server=DIN-STT
+Server=#REPORT SERVER,PORT
 Driver=ODBC Driver 17 for SQL Server
 ```
 
@@ -63,12 +63,67 @@ Notes:
 
 - `[DatabaseConfig]` controls normal leave operations.
 - `[ReportConfig]` controls only the Leave Report Config menu.
+- `[ReportConfig] Server` is the SQL Server location where the report configuration data is stored.
 - The report config database name is fixed to `HR_REPORT_CONFIG`.
 - If using a custom SQL port, set `Server=SERVER_NAME,PORT`.
+- Keep the placeholder format as `Server=#REPORT SERVER,PORT` until replacing it with the real report SQL Server and port.
 
-## Install Release Build
+## Install From GitHub Release
 
-1. Build or obtain the Windows release folder:
+Use this method for normal users.
+
+1. Open the GitHub repository in a browser.
+
+2. Go to:
+
+   ```text
+   Releases
+   ```
+
+3. Download the Windows release zip:
+
+   ```text
+   leave_management_windows_release.zip
+   ```
+
+4. Extract the zip to a local folder, for example:
+
+   ```text
+   C:\HR Leave Management
+   ```
+
+5. Confirm the extracted folder contains:
+
+   ```text
+   leave_management.exe
+   config.ini
+   flutter_windows.dll
+   data\
+   stored_procedure\
+   ```
+
+6. Edit `config.ini` in the extracted folder.
+
+7. Run:
+
+   ```text
+   leave_management.exe
+   ```
+
+8. On first run, the app connects to the database from `config.ini`, creates or repairs required users, and executes the stored procedure setup files in `stored_procedure\`.
+
+Important:
+
+- Keep `config.ini` beside `leave_management.exe`.
+- Keep the `data\` folder beside `leave_management.exe`.
+- Keep the `stored_procedure\` folder beside `leave_management.exe` so startup setup can run.
+- Do not run the exe directly from inside the zip file. Extract it first.
+
+## Create Release Zip For GitHub
+
+Use this method when preparing a new release package.
+
+1. Build the Windows release:
 
    ```powershell
    flutter build windows --release
@@ -94,7 +149,15 @@ Notes:
    leave_management.exe
    ```
 
-6. Login with an existing account. The startup process creates default system users if the user table is missing.
+6. Create a zip from the contents of the `Release` folder:
+
+   ```powershell
+   Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath releases\leave_management_windows_release.zip -Force
+   ```
+
+7. Upload `releases\leave_management_windows_release.zip` to GitHub Releases.
+
+Do not commit the full `build\` folder to Git. Flutter build output is ignored by `.gitignore` on purpose.
 
 ## Build From Source
 
