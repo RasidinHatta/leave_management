@@ -32,14 +32,16 @@ class AppAppearance {
 
 class _PaletteColors {
   final Color primary;
-  final Color primaryLight;
-  final Color primaryDark;
+  final Color secondary;
+  final Color tertiary;
+  final Color soft;
   final Color onPrimary;
 
   const _PaletteColors({
     required this.primary,
-    required this.primaryLight,
-    required this.primaryDark,
+    required this.secondary,
+    required this.tertiary,
+    required this.soft,
     required this.onPrimary,
   });
 }
@@ -58,56 +60,74 @@ class AppColors {
       case AppPalette.oceanBreeze:
         return _PaletteColors(
           primary: Color(0xFF3B82F6),
-          primaryLight: Color(0xFF06B6D4),
-          primaryDark: Color(0xFF0EA5E9),
+          secondary: Color(0xFF06B6D4),
+          tertiary: Color(0xFF0EA5E9),
+          soft: Color(0xFF93C5FD),
           onPrimary: Colors.white,
         );
       case AppPalette.forestWalk:
         return _PaletteColors(
           primary: Color(0xFF10B981),
-          primaryLight: Color(0xFF34D399),
-          primaryDark: Color(0xFF065F46),
+          secondary: Color(0xFF34D399),
+          tertiary: Color(0xFF6EE7B7),
+          soft: Color(0xFF065F46),
           onPrimary: Colors.white,
         );
       case AppPalette.lavenderDusk:
         return _PaletteColors(
           primary: Color(0xFF8B5CF6),
-          primaryLight: Color(0xFFEC4899),
-          primaryDark: Color(0xFFA78BFA),
+          secondary: Color(0xFFEC4899),
+          tertiary: Color(0xFFA78BFA),
+          soft: Color(0xFFF9A8D4),
           onPrimary: Colors.white,
         );
       case AppPalette.slatePro:
         return _PaletteColors(
           primary: Color(0xFF475569),
-          primaryLight: Color(0xFF64748B),
-          primaryDark: Color(0xFF94A3B8),
+          secondary: Color(0xFF64748B),
+          tertiary: Color(0xFF94A3B8),
+          soft: Color(0xFFCBD5E1),
           onPrimary: Colors.white,
         );
       case AppPalette.roseGold:
         return _PaletteColors(
           primary: Color(0xFFFB7185),
-          primaryLight: Color(0xFFF43F5E),
-          primaryDark: Color(0xFFFBBF24),
+          secondary: Color(0xFFF43F5E),
+          tertiary: Color(0xFFFBBF24),
+          soft: Color(0xFFFDE68A),
           onPrimary: Colors.white,
         );
       case AppPalette.amberSunset:
         return _PaletteColors(
           primary: Color(0xFFF59E0B),
-          primaryLight: Color(0xFFEF4444),
-          primaryDark: Color(0xFFF97316),
+          secondary: Color(0xFFEF4444),
+          tertiary: Color(0xFFF97316),
+          soft: Color(0xFFFCD34D),
           onPrimary: Color(0xFFFFFBEB),
         );
     }
   }
 
-  static Color get background => isDark ? Color(0xFF111827) : Color(0xFFF4F6FA);
-  static Color get surface => isDark ? Color(0xFF1F2937) : Color(0xFFFFFFFF);
+  static Color get background => isDark ? Color(0xFF162032) : Color(0xFFF4F6FA);
+  static Color get surface => isDark ? Color(0xFF223047) : Color(0xFFFFFFFF);
   static Color get surfaceElevated =>
-      isDark ? Color(0xFF273244) : Color(0xFFF8FAFC);
+      isDark ? Color(0xFF2B3A52) : Color(0xFFF8FAFC);
   static Color get primary => _accent.primary;
-  static Color get primaryLight => _accent.primaryLight;
-  static Color get primaryDark => _accent.primaryDark;
+  static Color get secondary => _accent.secondary;
+  static Color get tertiary => _accent.tertiary;
+  static Color get softAccent => _accent.soft;
+  static Color get primaryLight => secondary;
+  static Color get primaryDark => tertiary;
   static Color get onPrimary => _accent.onPrimary;
+  static Color get accentPanel => isDark
+      ? softAccent.withValues(alpha: 0.16)
+      : softAccent.withValues(alpha: 0.24);
+  static Color get accentPanelStrong => isDark
+      ? secondary.withValues(alpha: 0.18)
+      : softAccent.withValues(alpha: 0.36);
+  static Color get accentBorder => isDark
+      ? tertiary.withValues(alpha: 0.48)
+      : primary.withValues(alpha: 0.42);
   static Color get success => Color(0xFF10B981);
   static Color get successBg => isDark ? Color(0xFF0D2818) : Color(0xFFDDFBEA);
   static Color get error => Color(0xFFEF4444);
@@ -115,13 +135,13 @@ class AppColors {
   static Color get warning => Color(0xFFF59E0B);
   static Color get warningBg => isDark ? Color(0xFF2D2008) : Color(0xFFFEF3C7);
   static Color get textPrimary =>
-      isDark ? Color(0xFFFFFBEB) : Color(0xFF111827);
+      isDark ? Color(0xFFFFFFFF) : Color(0xFF111827);
   static Color get textSecondary =>
-      isDark ? Color(0xFF9CA3AF) : Color(0xFF4B5563);
-  static Color get textMuted => isDark ? Color(0xFF6B7280) : Color(0xFF6B7280);
+      isDark ? Color(0xFFE5ECF5) : Color(0xFF4B5563);
+  static Color get textMuted => isDark ? Color(0xFFD2DCE8) : Color(0xFF6B7280);
   static Color get textDisabled =>
-      isDark ? Color(0xFF4B5563) : Color(0xFF9CA3AF);
-  static Color get border => isDark ? Color(0xFF374151) : Color(0xFFD7DEE8);
+      isDark ? Color(0xFFA8B5C7) : Color(0xFF9CA3AF);
+  static Color get border => isDark ? Color(0xFF46566D) : Color(0xFFD7DEE8);
 }
 
 class AppTheme {
@@ -142,20 +162,20 @@ class AppTheme {
         brightness: brightness,
         primary: AppColors.primary,
         onPrimary: AppColors.onPrimary,
-        secondary: AppColors.primaryLight,
+        secondary: AppColors.secondary,
         onSecondary: AppColors.onPrimary,
-        tertiary: AppColors.primaryDark,
+        tertiary: AppColors.tertiary,
         onTertiary: AppColors.onPrimary,
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
         error: AppColors.error,
         onError: Colors.white,
-        primaryContainer: AppColors.primary.withValues(alpha: 0.16),
-        onPrimaryContainer: AppColors.primaryLight,
+        primaryContainer: AppColors.accentPanelStrong,
+        onPrimaryContainer: AppColors.secondary,
         secondaryContainer: AppColors.surfaceElevated,
         onSecondaryContainer: AppColors.textPrimary,
-        tertiaryContainer: AppColors.primary.withValues(alpha: 0.12),
-        onTertiaryContainer: AppColors.primary,
+        tertiaryContainer: AppColors.accentPanel,
+        onTertiaryContainer: AppColors.tertiary,
         errorContainer: AppColors.errorBg,
         onErrorContainer: AppColors.error,
         inverseSurface: appearance.isDark
@@ -164,7 +184,7 @@ class AppTheme {
         onInverseSurface: appearance.isDark
             ? Color(0xFF111827)
             : Color(0xFFF9FAFB),
-        inversePrimary: AppColors.primaryDark,
+        inversePrimary: AppColors.tertiary,
         shadow: Colors.black,
         scrim: Colors.black,
         outline: AppColors.border,
@@ -200,7 +220,7 @@ class AppTheme {
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: AppColors.primary,
-        selectionColor: Color(0x4DD97706),
+        selectionColor: AppColors.softAccent.withValues(alpha: 0.32),
         selectionHandleColor: AppColors.primary,
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -217,7 +237,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.tertiary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -247,15 +267,15 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: BorderSide(color: AppColors.primary),
+          foregroundColor: AppColors.secondary,
+          side: BorderSide(color: AppColors.secondary),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.secondary,
           textStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
       ),
@@ -269,7 +289,7 @@ class AppTheme {
         ),
         dataRowColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.hovered)) {
-            return AppColors.primary.withValues(alpha: 0.05);
+            return AppColors.accentPanel;
           }
           return AppColors.surface;
         }),
@@ -313,6 +333,21 @@ class AppTheme {
         }),
         side: BorderSide(color: AppColors.border, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primary;
+          }
+          return AppColors.textSecondary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.softAccent.withValues(alpha: 0.35);
+          }
+          return AppColors.surfaceElevated;
+        }),
+        trackOutlineColor: WidgetStateProperty.all(AppColors.accentBorder),
       ),
       textTheme: TextTheme(
         titleLarge: TextStyle(

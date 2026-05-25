@@ -222,13 +222,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
     switch (role.toUpperCase()) {
       case 'REPORT':
-        bg = Color(0xFF78350F);
-        text = Color(0xFFFDE68A);
+        bg = AppColors.accentPanelStrong;
+        text = AppColors.tertiary;
         icon = Icons.fact_check_outlined;
         break;
       default: // USER
-        bg = Color(0xFF064E3B); // Emerald background
-        text = Color(0xFFA7F3D0); // Emerald text
+        bg = AppColors.accentPanel;
+        text = AppColors.secondary;
         icon = Icons.person_outline;
         break;
     }
@@ -294,12 +294,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
+                color: AppColors.accentPanel,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 Icons.people_outline,
-                color: AppColors.primary,
+                color: AppColors.tertiary,
                 size: 20,
               ),
             ),
@@ -452,7 +452,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 Icon(
                   Icons.storage_outlined,
                   size: 15,
-                  color: AppColors.primaryLight,
+                  color: AppColors.secondary,
                 ),
                 SizedBox(width: 8),
                 Text(
@@ -657,15 +657,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.15,
-                                  ),
+                                  color: AppColors.accentPanel,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
                                   'YOU',
                                   style: TextStyle(
-                                    color: AppColors.primaryLight,
+                                    color: AppColors.secondary,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -689,7 +687,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           children: [
                             IconButton(
                               icon: Icon(Icons.edit_outlined, size: 16),
-                              color: AppColors.primaryLight,
+                              color: AppColors.secondary,
                               tooltip: 'Edit User Role/Password',
                               onPressed: () => _showEditUserDialog(user),
                             ),

@@ -505,12 +505,12 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: AppColors.accentPanel,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.event_busy_outlined,
-            color: AppColors.primary,
+            color: AppColors.tertiary,
             size: 20,
           ),
         ),
@@ -616,7 +616,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
                 Icon(
                   Icons.storage_outlined,
                   size: 16,
-                  color: AppColors.primaryLight,
+                  color: AppColors.secondary,
                 ),
                 SizedBox(width: 8),
                 Text(

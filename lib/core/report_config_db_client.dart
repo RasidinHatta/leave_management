@@ -7,6 +7,22 @@ import 'package:leave_management/models/target.dart';
 
 String _emailPasswordPassphrase = 'leave-management-report-config';
 
+class ReportDatabaseOption {
+  final String databaseName;
+  final int? databaseId;
+  final String createDate;
+  final String stateDesc;
+  final String recoveryModelDesc;
+
+  const ReportDatabaseOption({
+    required this.databaseName,
+    required this.databaseId,
+    required this.createDate,
+    required this.stateDesc,
+    required this.recoveryModelDesc,
+  });
+}
+
 class ReportConfigDbClient {
   static final ReportConfigDbClient _instance =
       ReportConfigDbClient._internal();
@@ -285,6 +301,40 @@ SELECT
       throw DatabaseException(
         'Report config connection check query failed: $e',
       );
+    }
+  }
+
+  Future<List<ReportDatabaseOption>> getAvailableReportDatabases() async {
+    await ensureConnected();
+    try {
+      final rows = await _odbc.execute('''
+SELECT
+    name AS DatabaseName,
+    database_id,
+    create_date,
+    state_desc,
+    recovery_model_desc
+FROM sys.databases
+WHERE name LIKE 'MYPAY[_]%'
+ORDER BY name
+''');
+
+      return rows
+          .map((row) {
+            return ReportDatabaseOption(
+              databaseName: row['DatabaseName']?.toString() ?? '',
+              databaseId: row['database_id'] is int
+                  ? row['database_id'] as int
+                  : int.tryParse(row['database_id']?.toString() ?? ''),
+              createDate: row['create_date']?.toString() ?? '',
+              stateDesc: row['state_desc']?.toString() ?? '',
+              recoveryModelDesc: row['recovery_model_desc']?.toString() ?? '',
+            );
+          })
+          .where((db) => db.databaseName.isNotEmpty)
+          .toList();
+    } catch (e) {
+      throw DatabaseException('Unable to load MYPAY database list: $e');
     }
   }
 

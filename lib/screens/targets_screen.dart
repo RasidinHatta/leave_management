@@ -70,12 +70,12 @@ class _TargetsScreenState extends State<TargetsScreen> {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: AppColors.accentPanel,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.storage_outlined,
-            color: AppColors.primary,
+            color: AppColors.tertiary,
             size: 20,
           ),
         ),

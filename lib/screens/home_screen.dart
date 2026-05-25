@@ -44,10 +44,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _settingsAmber = Color(0xFFF59E0B);
-  static const _settingsAmberTintDark = Color(0xFF2D2008);
-  static const _settingsAmberTintLight = Color(0xFFFFF7E6);
-
   final ScrollController _settingsScrollCtrl = ScrollController();
   _Nav _current = _Nav.bringForward;
 
@@ -248,50 +244,90 @@ class _HomeScreenState extends State<HomeScreen> {
     final selected = _current == item.nav;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      child: InkWell(
-        onTap: () => setState(() => _current = item.nav),
-        borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 150),
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                item.icon,
-                size: 16,
-                color: selected
-                    ? AppColors.primaryLight
-                    : AppColors.textSecondary,
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  item.label,
-                  style: TextStyle(
-                    color: selected
-                        ? AppColors.primaryLight
-                        : AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: selected ? 1 : 0),
+        duration: Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, child) {
+          final bgColor = Color.lerp(
+            Colors.transparent,
+            AppColors.accentPanel,
+            t,
+          );
+          final borderColor = Color.lerp(
+            Colors.transparent,
+            AppColors.accentBorder,
+            t,
+          );
+          final iconColor = Color.lerp(
+            AppColors.textSecondary,
+            AppColors.secondary,
+            t,
+          );
+          final textColor = Color.lerp(
+            AppColors.textSecondary,
+            AppColors.primary,
+            t,
+          );
+
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => setState(() => _current = item.nav),
+              borderRadius: BorderRadius.circular(8),
+              hoverColor: AppColors.accentPanel.withValues(alpha: 0.45),
+              splashColor: AppColors.softAccent.withValues(alpha: 0.18),
+              highlightColor: AppColors.softAccent.withValues(alpha: 0.12),
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor ?? Colors.transparent),
+                ),
+                child: Row(
+                  children: [
+                    Icon(item.icon, size: 16, color: iconColor),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.lerp(
+                            FontWeight.w400,
+                            FontWeight.w600,
+                            t,
+                          ),
+                        ),
+                      ),
+                    ),
+                    AnimatedScale(
+                      scale: selected ? 1 : 0,
+                      duration: Duration(milliseconds: 220),
+                      curve: Curves.easeOutBack,
+                      child: AnimatedOpacity(
+                        opacity: selected ? 1 : 0,
+                        duration: Duration(milliseconds: 160),
+                        child: Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.tertiary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (selected)
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -312,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(
                   Icons.storage_outlined,
                   size: 12,
-                  color: AppColors.primaryLight,
+                  color: AppColors.tertiary,
                 ),
                 SizedBox(width: 6),
                 Expanded(
@@ -590,9 +626,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: _settingsAmber,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      side: BorderSide(color: _settingsAmber),
+                      side: BorderSide(color: AppColors.primary),
                       padding: EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -639,14 +675,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? (AppColors.isDark
-                    ? _settingsAmberTintDark
-                    : _settingsAmberTintLight)
-              : AppColors.background,
+          color: selected ? AppColors.accentPanelStrong : AppColors.background,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? _settingsAmber : AppColors.border,
+            color: selected ? AppColors.primary : AppColors.border,
           ),
         ),
         child: Row(
@@ -655,7 +687,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(
               icon,
               size: 16,
-              color: selected ? _settingsAmber : AppColors.textSecondary,
+              color: selected ? AppColors.tertiary : AppColors.textSecondary,
             ),
             SizedBox(width: 8),
             Text(
@@ -685,14 +717,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: selected
-              ? (AppColors.isDark
-                    ? _settingsAmberTintDark
-                    : _settingsAmberTintLight)
-              : AppColors.background,
+          color: selected ? AppColors.accentPanelStrong : AppColors.background,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? _settingsAmber : AppColors.border,
+            color: selected ? AppColors.primary : AppColors.border,
           ),
         ),
         child: Column(

@@ -141,12 +141,12 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: AppColors.accentPanel,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.calendar_today_outlined,
-            color: AppColors.primary,
+            color: AppColors.tertiary,
             size: 20,
           ),
         ),
@@ -392,16 +392,14 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
+                color: AppColors.accentPanel,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                ),
+                border: Border.all(color: AppColors.accentBorder),
               ),
               child: Text(
                 '${_results.length} record${_results.length == 1 ? '' : 's'} found  •  $_formattedDate',
                 style: TextStyle(
-                  color: AppColors.primaryLight,
+                  color: AppColors.secondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),

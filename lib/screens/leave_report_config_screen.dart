@@ -172,12 +172,12 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: AppColors.accentPanel,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.fact_check_outlined,
-            color: AppColors.primary,
+            color: AppColors.tertiary,
             size: 20,
           ),
         ),
@@ -250,7 +250,7 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.storage_outlined, color: AppColors.primaryLight, size: 16),
+          Icon(Icons.storage_outlined, color: AppColors.secondary, size: 16),
           SizedBox(width: 8),
           Text(
             '$kReportServerName / $kReportDatabaseName / $kReportDriverName',
@@ -456,7 +456,7 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
                 IconButton(
                   onPressed: () => _showTargetDialog(target),
                   icon: Icon(Icons.edit_outlined, size: 16),
-                  color: AppColors.primary,
+                  color: AppColors.secondary,
                   tooltip: 'Edit',
                   padding: EdgeInsets.zero,
                   constraints: BoxConstraints(minWidth: 32, minHeight: 32),
@@ -504,6 +504,9 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
   bool _isActive = true;
   bool _obscurePassword = true;
   bool _isSaving = false;
+  bool _isLoadingDatabases = false;
+  String? _databaseLoadError;
+  List<ReportDatabaseOption> _databaseOptions = [];
 
   bool get _isEdit => widget.existing != null;
 
@@ -525,6 +528,9 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
     _ccEmailsCtrl = TextEditingController(text: existing?.ccEmails ?? '');
     _emailUseTls = existing?.emailUseTls ?? true;
     _isActive = existing?.isActive ?? true;
+    if (!_isEdit) {
+      _loadDatabaseOptions();
+    }
   }
 
   @override
@@ -579,6 +585,27 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
     }
   }
 
+  Future<void> _loadDatabaseOptions() async {
+    setState(() {
+      _isLoadingDatabases = true;
+      _databaseLoadError = null;
+    });
+
+    try {
+      final options = await widget.client.getAvailableReportDatabases();
+      if (!mounted) return;
+      setState(() => _databaseOptions = options);
+    } on DatabaseException catch (e) {
+      if (!mounted) return;
+      setState(() => _databaseLoadError = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _databaseLoadError = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingDatabases = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -620,15 +647,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                 SizedBox(height: 18),
                 Row(
                   children: [
-                    Expanded(
-                      child: _field(
-                        _databaseCtrl,
-                        'Database Name',
-                        'MYPAY_LCO',
-                        enabled: !_isEdit,
-                        validator: _required,
-                      ),
-                    ),
+                    Expanded(child: _databasePicker()),
                     SizedBox(width: 16),
                     Expanded(
                       child: _field(
@@ -755,6 +774,120 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
 
   String? _required(String? value) {
     return value == null || value.trim().isEmpty ? 'Required' : null;
+  }
+
+  Widget _databasePicker() {
+    if (_isEdit) {
+      return _field(
+        _databaseCtrl,
+        'Database',
+        'MYPAY_LCO',
+        enabled: false,
+        validator: _required,
+      );
+    }
+
+    final selectedValue =
+        _databaseOptions.any(
+          (option) => option.databaseName == _databaseCtrl.text,
+        )
+        ? _databaseCtrl.text
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Database',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: selectedValue,
+          isExpanded: true,
+          menuMaxHeight: 320,
+          items: _databaseOptions.map((option) {
+            final status = option.stateDesc.isEmpty
+                ? 'UNKNOWN'
+                : option.stateDesc;
+            return DropdownMenuItem<String>(
+              value: option.databaseName,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      option.databaseName,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    status,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: _isLoadingDatabases
+              ? null
+              : (value) {
+                  setState(() {
+                    _databaseCtrl.text = value ?? '';
+                    if (_displayNameCtrl.text.trim().isEmpty && value != null) {
+                      _displayNameCtrl.text = value;
+                    }
+                  });
+                },
+          validator: (value) =>
+              value == null || value.trim().isEmpty ? 'Required' : null,
+          decoration: InputDecoration(
+            hintText: _isLoadingDatabases
+                ? 'Loading MYPAY databases...'
+                : _databaseOptions.isEmpty
+                ? 'No MYPAY databases found'
+                : 'Select database',
+            suffixIcon: _isLoadingDatabases
+                ? Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: 'Refresh databases',
+                    onPressed: _loadDatabaseOptions,
+                    icon: Icon(Icons.refresh, size: 18),
+                  ),
+            isDense: true,
+          ),
+        ),
+        if (_databaseLoadError != null) ...[
+          SizedBox(height: 6),
+          Text(
+            _databaseLoadError!,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: AppColors.error, fontSize: 11),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _field(
