@@ -653,7 +653,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                       child: _field(
                         _displayNameCtrl,
                         'Display Name',
-                        'MyPay LCO',
+                        'Company display name',
                         validator: _required,
                       ),
                     ),
@@ -781,7 +781,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
       return _field(
         _databaseCtrl,
         'Database',
-        'MYPAY_LCO',
+        'Database name',
         enabled: false,
         validator: _required,
       );
@@ -856,9 +856,9 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
               value == null || value.trim().isEmpty ? 'Required' : null,
           decoration: InputDecoration(
             hintText: _isLoadingDatabases
-                ? 'Loading MYPAY databases...'
+                ? 'Loading databases...'
                 : _databaseOptions.isEmpty
-                ? 'No MYPAY databases found'
+                ? 'No databases found'
                 : 'Select database',
             suffixIcon: _isLoadingDatabases
                 ? Padding(

@@ -315,7 +315,7 @@ SELECT
     state_desc,
     recovery_model_desc
 FROM sys.databases
-WHERE name LIKE 'MYPAY[_]%'
+WHERE name NOT LIKE '%TEST%'
 ORDER BY name
 ''');
 
@@ -334,7 +334,7 @@ ORDER BY name
           .where((db) => db.databaseName.isNotEmpty)
           .toList();
     } catch (e) {
-      throw DatabaseException('Unable to load MYPAY database list: $e');
+      throw DatabaseException('Unable to load database list: $e');
     }
   }
 
