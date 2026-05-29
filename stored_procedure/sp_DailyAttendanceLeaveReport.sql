@@ -28,6 +28,7 @@ BEGIN
             LV_CODE,
             LV_APP_DATE,
             REMARK,
+            MAX(LV_DAY_PORTION_CODE) AS LV_DAY_PORTION_CODE,
             MIN(CAST(LV_DATE AS date)) AS LeaveStartDate,
             MAX(CAST(LV_DATE AS date)) AS LeaveEndDate
         FROM LeaveRows
@@ -59,7 +60,19 @@ BEGIN
 
         ISNULL(T.LV_DESC, P.LV_CODE) AS [Leave applied],
 
-        CONVERT(varchar(10), RTW.ResumeDate, 103) AS [Resume to work],
+        CONVERT(varchar(10),
+            CASE
+                WHEN P.LeaveStartDate = P.LeaveEndDate
+                 AND (
+                        P.LV_CODE IN ('FHA', 'FCP', 'FEL', 'FML', 'FSD', 'FUL')
+                     OR ISNULL(P.LV_DAY_PORTION_CODE, '') IN ('F', 'FH', 'FIRST', 'FIRST_HALF', '1')
+                     OR ISNULL(T.LV_DESC, '') LIKE 'First Half%'
+                 )
+                THEN P.LeaveEndDate
+                ELSE RTW.ResumeDate
+            END,
+            103
+        ) AS [Resume to work],
 
         P.REMARK AS [Remark]
 

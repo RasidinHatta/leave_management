@@ -44,8 +44,34 @@ if (-not (Test-Path $InstallPath)) {
     New-Item -ItemType Directory -Path $InstallPath | Out-Null
 }
 
+$InstalledExe = Join-Path $InstallPath $AppExe
+$IsUpdate = Test-Path $InstalledExe
+
+if ($IsUpdate) {
+    Write-Host ""
+    Write-Host "Existing installation found. Updating installed files..." -ForegroundColor Yellow
+
+    $RunningProcesses = Get-Process -Name "leave_management" -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -eq $InstalledExe
+    }
+
+    if ($RunningProcesses) {
+        $StopAnswer = Read-Host "SmartLMS is currently running. Close it now so files can be replaced? [Y/n]"
+        if ([string]::IsNullOrWhiteSpace($StopAnswer) -or $StopAnswer.Trim().ToLowerInvariant().StartsWith("y")) {
+            $RunningProcesses | Stop-Process -Force
+            Start-Sleep -Seconds 1
+        } else {
+            throw "Install cancelled because SmartLMS is still running."
+        }
+    }
+}
+
 Write-Host ""
-Write-Host "Installing to: $InstallPath" -ForegroundColor Cyan
+if ($IsUpdate) {
+    Write-Host "Updating: $InstallPath" -ForegroundColor Cyan
+} else {
+    Write-Host "Installing to: $InstallPath" -ForegroundColor Cyan
+}
 
 $ExcludedNames = @("setup.ps1", "setup.bat")
 Get-ChildItem -LiteralPath $SourceDir -Force | Where-Object {
@@ -59,7 +85,6 @@ Get-ChildItem -LiteralPath $SourceDir -Force | Where-Object {
     }
 }
 
-$InstalledExe = Join-Path $InstallPath $AppExe
 if (-not (Test-Path $InstalledExe)) {
     throw "Install failed: $InstalledExe was not copied."
 }
@@ -77,5 +102,9 @@ if ($DesktopShortcut) {
 }
 
 Write-Host ""
-Write-Host "Install complete." -ForegroundColor Green
+if ($IsUpdate) {
+    Write-Host "Update complete." -ForegroundColor Green
+} else {
+    Write-Host "Install complete." -ForegroundColor Green
+}
 Write-Host "Run: $InstalledExe"
