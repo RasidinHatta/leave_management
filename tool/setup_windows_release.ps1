@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppExe = "leave_management.exe"
-$AppName = "HR Leave Management"
+$AppName = "SmartLMS"
 $InstallFolderName = "SmartLMS"
 $DefaultInstallPath = Join-Path $env:LOCALAPPDATA "Programs\$InstallFolderName"
 
