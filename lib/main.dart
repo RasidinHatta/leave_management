@@ -14,11 +14,6 @@ void main() async {
   LeaveManagementApp.appearanceNotifier.value = appSettings.appearance;
   LeaveManagementApp.enableSettingsPersistence();
   DirectDbClient().enableDiagnostics();
-  try {
-    await DirectDbClient().runStartupStoredProcedures();
-  } catch (e) {
-    debugPrint('Startup database setup failed: $e');
-  }
   runApp(const LeaveManagementApp());
 }
 

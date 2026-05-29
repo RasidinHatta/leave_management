@@ -8,6 +8,18 @@ IF OBJECT_ID(N'[dbo].[sp_AddLeaveRecords_Bulk]', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[sp_AddLeaveRecords_Bulk]
 GO
 
+DROP TYPE IF EXISTS [dbo].[LeaveImportList]
+GO
+
+CREATE TYPE [dbo].[LeaveImportList] AS TABLE
+(
+    [EMP_CODE] [varchar](50) NULL,
+    [LV_DATE] [date] NULL,
+    [LV_CODE] [varchar](50) NULL,
+    [REMARK] [varchar](255) NULL
+)
+GO
+
 CREATE PROCEDURE [dbo].[sp_AddLeaveRecords_Bulk]
 (
     @List dbo.LeaveImportList READONLY
@@ -18,6 +30,25 @@ BEGIN
 
     BEGIN TRY
         BEGIN TRAN;
+
+        DECLARE @RequestedCount int = (SELECT COUNT(*) FROM @List);
+
+        IF @RequestedCount = 0
+        BEGIN
+            THROW 50008, 'No leave records were provided for import.', 1;
+        END;
+
+        IF EXISTS
+        (
+            SELECT 1
+            FROM @List
+            WHERE EMP_CODE IS NULL OR LTRIM(RTRIM(EMP_CODE)) = ''
+               OR LV_DATE IS NULL
+               OR LV_CODE IS NULL OR LTRIM(RTRIM(LV_CODE)) = ''
+        )
+        BEGIN
+            THROW 50009, 'Employee code, leave date, and leave code are required.', 1;
+        END;
 
         ------------------------------------------------------------
         -- 1. Validate leave code
@@ -174,7 +205,7 @@ BEGIN
         ------------------------------------------------------------
         -- 5. Validate LV_SUMMARY exists for mapped leave group
         --    Example:
-        --    FHA/SHA/D-01-Y updates AL summary
+        --    AL/FHA/SHA updates AL summary
         --    FML/SML updates ML summary
         ------------------------------------------------------------
         IF EXISTS
@@ -185,10 +216,9 @@ BEGIN
                 SELECT
                     L.EMP_CODE,
                     YEAR(L.LV_DATE) AS YEAR_,
-                    MONTH(L.LV_DATE) AS MONTH_,
 
                     CASE 
-                        WHEN L.LV_CODE IN ('FHA', 'SHA', 'D-01-Y') THEN 'AL'
+                        WHEN L.LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
                         WHEN L.LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
                         WHEN L.LV_CODE IN ('FEL', 'SEL') THEN 'EL'
                         WHEN L.LV_CODE IN ('FML', 'SML') THEN 'ML'
@@ -200,9 +230,8 @@ BEGIN
                 GROUP BY
                     L.EMP_CODE,
                     YEAR(L.LV_DATE),
-                    MONTH(L.LV_DATE),
                     CASE 
-                        WHEN L.LV_CODE IN ('FHA', 'SHA', 'D-01-Y') THEN 'AL'
+                        WHEN L.LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
                         WHEN L.LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
                         WHEN L.LV_CODE IN ('FEL', 'SEL') THEN 'EL'
                         WHEN L.LV_CODE IN ('FML', 'SML') THEN 'ML'
@@ -211,18 +240,19 @@ BEGIN
                         ELSE L.LV_CODE
                     END
             ) X
-            WHERE NOT EXISTS
+            OUTER APPLY
             (
-                SELECT 1
+                SELECT COUNT(DISTINCT S.MONTH_) AS SUMMARY_MONTHS
                 FROM dbo.[LV_SUMMARY] S
                 WHERE S.EMP_CODE = X.EMP_CODE
                   AND S.YEAR_ = X.YEAR_
-                  AND S.MONTH_ >= X.MONTH_
                   AND S.LV_GROUP_CODE = X.LV_GROUP_CODE
-            )
+                  AND S.MONTH_ BETWEEN 1 AND 12
+            ) M
+            WHERE ISNULL(M.SUMMARY_MONTHS, 0) <> 12
         )
         BEGIN
-            THROW 50002, 'No LV_SUMMARY record found for the mapped leave group. Please initialize employee leave first.', 1;
+            THROW 50002, 'LV_SUMMARY must contain all 12 months for the mapped leave group. Please initialize employee leave first.', 1;
         END;
 
         ------------------------------------------------------------
@@ -275,37 +305,42 @@ BEGIN
             ON T.LV_CODE = L.LV_CODE
            AND T.LV_EVENT_CODE = 'LEAVE';
 
+        DECLARE @InsertedCount int = (SELECT COUNT(*) FROM @InsertedLeave);
+
+        IF @InsertedCount <> @RequestedCount
+        BEGIN
+            THROW 50010, 'Leave records were not inserted. Please check employee codes and leave type setup.', 1;
+        END;
+
         ------------------------------------------------------------
-        -- 8. Update LV_SUMMARY
+        -- 8. Recalculate LV_SUMMARY from LV_RECORDS
+        --    LV_RECORDS is the source of truth.
         --    LV_RECORDS uses actual code: FHA / SHA / FML / SML
         --    LV_SUMMARY uses mapped group: AL / ML
         --    Use LV_DATE month, not LV_APP_DATE month.
+        --    Annual columns are recalculated for all 12 months.
+        --    YTD columns are recalculated by each summary month.
         ------------------------------------------------------------
-        ;WITH MonthlyLeaveTaken AS
+        ;WITH AffectedLeaveGroups AS
         (
             SELECT
                 EMP_CODE,
                 YEAR(LV_DATE) AS YEAR_,
-                MONTH(LV_DATE) AS MONTH_,
-
                 CASE 
-                    WHEN LV_CODE IN ('FHA', 'SHA', 'D-01-Y') THEN 'AL'
+                    WHEN LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
                     WHEN LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
                     WHEN LV_CODE IN ('FEL', 'SEL') THEN 'EL'
                     WHEN LV_CODE IN ('FML', 'SML') THEN 'ML'
                     WHEN LV_CODE IN ('FSD', 'SSD') THEN 'STD'
                     WHEN LV_CODE IN ('FUL', 'SUL') THEN 'UL'
                     ELSE LV_CODE
-                END AS LV_GROUP_CODE,
-
-                SUM(DAY_) AS TAKEN_DAY
+                END AS LV_GROUP_CODE
             FROM @InsertedLeave
             GROUP BY
                 EMP_CODE,
                 YEAR(LV_DATE),
-                MONTH(LV_DATE),
                 CASE 
-                    WHEN LV_CODE IN ('FHA', 'SHA', 'D-01-Y') THEN 'AL'
+                    WHEN LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
                     WHEN LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
                     WHEN LV_CODE IN ('FEL', 'SEL') THEN 'EL'
                     WHEN LV_CODE IN ('FML', 'SML') THEN 'ML'
@@ -314,6 +349,68 @@ BEGIN
                     ELSE LV_CODE
                 END
         ),
+        LeaveRecordsMapped AS
+        (
+            SELECT
+                R.EMP_CODE,
+                YEAR(R.LV_DATE) AS YEAR_,
+                MONTH(R.LV_DATE) AS MONTH_,
+                CASE 
+                    WHEN R.LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
+                    WHEN R.LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
+                    WHEN R.LV_CODE IN ('FEL', 'SEL') THEN 'EL'
+                    WHEN R.LV_CODE IN ('FML', 'SML') THEN 'ML'
+                    WHEN R.LV_CODE IN ('FSD', 'SSD') THEN 'STD'
+                    WHEN R.LV_CODE IN ('FUL', 'SUL') THEN 'UL'
+                    ELSE R.LV_CODE
+                END AS LV_GROUP_CODE,
+                ISNULL(R.DAY_, 0) AS TAKEN_DAY
+            FROM dbo.[LV_RECORDS] R
+            INNER JOIN AffectedLeaveGroups A
+                ON A.EMP_CODE = R.EMP_CODE
+               AND A.YEAR_ = YEAR(R.LV_DATE)
+               AND A.LV_GROUP_CODE =
+                    CASE 
+                        WHEN R.LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
+                        WHEN R.LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
+                        WHEN R.LV_CODE IN ('FEL', 'SEL') THEN 'EL'
+                        WHEN R.LV_CODE IN ('FML', 'SML') THEN 'ML'
+                        WHEN R.LV_CODE IN ('FSD', 'SSD') THEN 'STD'
+                        WHEN R.LV_CODE IN ('FUL', 'SUL') THEN 'UL'
+                        ELSE R.LV_CODE
+                    END
+            WHERE R.LV_EVENT_CODE = 'LEAVE'
+        ),
+        AnnualLeaveTaken AS
+        (
+            SELECT
+                EMP_CODE,
+                YEAR_,
+                LV_GROUP_CODE,
+                SUM(TAKEN_DAY) AS TAKEN_DAY
+            FROM LeaveRecordsMapped
+            GROUP BY
+                EMP_CODE,
+                YEAR_,
+                LV_GROUP_CODE
+        ),
+        BringForwardFromRecords AS
+        (
+            SELECT
+                R.EMP_CODE,
+                YEAR(R.LV_DATE) AS YEAR_,
+                SUM(ISNULL(R.DAY_, 0)) AS BF_DAY
+            FROM dbo.[LV_RECORDS] R
+            INNER JOIN AffectedLeaveGroups A
+                ON A.EMP_CODE = R.EMP_CODE
+               AND A.YEAR_ = YEAR(R.LV_DATE)
+               AND A.LV_GROUP_CODE = 'AL'
+            WHERE R.LV_CODE = 'BF(AL)'
+              AND R.LV_EVENT_CODE = 'BRINGFORWARD'
+            GROUP BY
+                R.EMP_CODE,
+                YEAR(R.LV_DATE)
+        ),
         SummaryUpdate AS
         (
             SELECT
@@ -321,47 +418,95 @@ BEGIN
                 S.YEAR_,
                 S.MONTH_,
                 S.LV_GROUP_CODE,
-                SUM(L.TAKEN_DAY) AS TAKEN_DAY
+                ISNULL(A.TAKEN_DAY, 0) AS TAKEN_DAY,
+                CASE
+                    WHEN S.LV_GROUP_CODE = 'AL' THEN ISNULL(BF.BF_DAY, 0)
+                    ELSE ISNULL(S.BF, 0)
+                END AS BF_DAY,
+                CASE
+                    WHEN S.LV_GROUP_CODE = 'AL' THEN
+                        ISNULL(S.YTD, 0)
+                      - ISNULL(S.YTD_BF, 0)
+                      + ISNULL(BF.BF_DAY, 0)
+                    ELSE ISNULL(S.YTD, 0)
+                END AS YTD_DAY,
+                ISNULL(SUM(
+                    CASE
+                        WHEN L.MONTH_ <= S.MONTH_ THEN L.TAKEN_DAY
+                        ELSE 0
+                    END
+                ), 0) AS YTD_TAKEN_DAY
             FROM dbo.[LV_SUMMARY] S
-            INNER JOIN MonthlyLeaveTaken L
+            INNER JOIN AffectedLeaveGroups G
+                ON S.EMP_CODE = G.EMP_CODE
+               AND S.YEAR_ = G.YEAR_
+               AND S.LV_GROUP_CODE = G.LV_GROUP_CODE
+            LEFT JOIN AnnualLeaveTaken A
+                ON S.EMP_CODE = A.EMP_CODE
+               AND S.YEAR_ = A.YEAR_
+               AND S.LV_GROUP_CODE = A.LV_GROUP_CODE
+            LEFT JOIN BringForwardFromRecords BF
+                ON S.EMP_CODE = BF.EMP_CODE
+               AND S.YEAR_ = BF.YEAR_
+            LEFT JOIN LeaveRecordsMapped L
                 ON S.EMP_CODE = L.EMP_CODE
                AND S.YEAR_ = L.YEAR_
-               AND S.MONTH_ >= L.MONTH_
                AND S.LV_GROUP_CODE = L.LV_GROUP_CODE
+            WHERE S.MONTH_ BETWEEN 1 AND 12
             GROUP BY
                 S.EMP_CODE,
                 S.YEAR_,
                 S.MONTH_,
-                S.LV_GROUP_CODE
+                S.LV_GROUP_CODE,
+                A.TAKEN_DAY,
+                BF.BF_DAY,
+                S.BF,
+                S.YTD,
+                S.YTD_BF
         )
         UPDATE S
         SET
-            S.TAKEN = ISNULL(S.TAKEN, 0) + U.TAKEN_DAY,
+            S.BF = CASE
+                WHEN S.LV_GROUP_CODE = 'AL' THEN U.BF_DAY
+                ELSE S.BF
+            END,
 
-            S.YTD_TAKEN = ISNULL(S.YTD_TAKEN, 0) + U.TAKEN_DAY,
+            S.TAKEN = U.TAKEN_DAY,
+
+            S.YTD = CASE
+                WHEN S.LV_GROUP_CODE = 'AL' THEN U.YTD_DAY
+                ELSE S.YTD
+            END,
+
+            S.YTD_BF = CASE
+                WHEN S.LV_GROUP_CODE = 'AL' THEN U.BF_DAY
+                ELSE S.YTD_BF
+            END,
+
+            S.YTD_TAKEN = U.YTD_TAKEN_DAY,
 
             S.BAL =
                 ISNULL(S.ENT, 0)
-              + ISNULL(S.BF, 0)
+              + U.BF_DAY
               + ISNULL(S.CR, 0)
               - ISNULL(S.BURN, 0)
-              - (ISNULL(S.TAKEN, 0) + U.TAKEN_DAY)
+              - U.TAKEN_DAY
               - ISNULL(S.ENCASH, 0)
               - ISNULL(S.FORFEIT, 0),
 
             S.YTD_BAL =
-                ISNULL(S.YTD, 0)
+                U.YTD_DAY
               - ISNULL(S.YTD_BURN, 0)
-              - (ISNULL(S.YTD_TAKEN, 0) + U.TAKEN_DAY)
+              - U.YTD_TAKEN_DAY
               - ISNULL(S.YTD_ENCASH, 0)
               - ISNULL(S.YTD_FORFEIT, 0),
 
             S.BAL_YEAR =
                 ISNULL(S.ENT, 0)
-              + ISNULL(S.BF, 0)
+              + U.BF_DAY
               + ISNULL(S.CR, 0)
               - ISNULL(S.BURN, 0)
-              - (ISNULL(S.TAKEN, 0) + U.TAKEN_DAY)
+              - U.TAKEN_DAY
               - ISNULL(S.ENCASH, 0)
               - ISNULL(S.FORFEIT, 0)
         FROM dbo.[LV_SUMMARY] S
@@ -371,7 +516,49 @@ BEGIN
            AND S.MONTH_ = U.MONTH_
            AND S.LV_GROUP_CODE = U.LV_GROUP_CODE;
 
+        DECLARE @UpdatedSummaryRows int = @@ROWCOUNT;
+
+        DECLARE @ExpectedSummaryRows int =
+        (
+            SELECT COUNT(*) * 12
+            FROM
+            (
+                SELECT
+                    EMP_CODE,
+                    YEAR(LV_DATE) AS YEAR_,
+                    CASE 
+                        WHEN LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
+                        WHEN LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
+                        WHEN LV_CODE IN ('FEL', 'SEL') THEN 'EL'
+                        WHEN LV_CODE IN ('FML', 'SML') THEN 'ML'
+                        WHEN LV_CODE IN ('FSD', 'SSD') THEN 'STD'
+                        WHEN LV_CODE IN ('FUL', 'SUL') THEN 'UL'
+                        ELSE LV_CODE
+                    END AS LV_GROUP_CODE
+                FROM @InsertedLeave
+                GROUP BY
+                    EMP_CODE,
+                    YEAR(LV_DATE),
+                    CASE 
+                        WHEN LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
+                        WHEN LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
+                        WHEN LV_CODE IN ('FEL', 'SEL') THEN 'EL'
+                        WHEN LV_CODE IN ('FML', 'SML') THEN 'ML'
+                        WHEN LV_CODE IN ('FSD', 'SSD') THEN 'STD'
+                        WHEN LV_CODE IN ('FUL', 'SUL') THEN 'UL'
+                        ELSE LV_CODE
+                    END
+            ) X
+        );
+
+        IF @UpdatedSummaryRows <> @ExpectedSummaryRows
+        BEGIN
+            THROW 50011, 'Leave records were inserted but LV_SUMMARY recalculation did not update all 12 months for each affected leave group.', 1;
+        END;
+
         COMMIT;
+
+        SELECT @InsertedCount AS insertedCount;
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0

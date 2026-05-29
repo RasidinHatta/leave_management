@@ -66,6 +66,7 @@ flutter:
   assets:
     - config.ini
     - assets/images/
+    - stored_procedure/
     - windows/runner/resources/app_icon.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

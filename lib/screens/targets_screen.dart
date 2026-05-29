@@ -12,6 +12,7 @@ class TargetsScreen extends StatefulWidget {
 
 class _TargetsScreenState extends State<TargetsScreen> {
   bool _isTesting = false;
+  bool _isUpdatingQuery = false;
   String? _resultMessage;
   bool _isSuccess = false;
 
@@ -39,6 +40,35 @@ class _TargetsScreenState extends State<TargetsScreen> {
       });
     } finally {
       setState(() => _isTesting = false);
+    }
+  }
+
+  Future<void> _updateQuery() async {
+    setState(() {
+      _isUpdatingQuery = true;
+      _resultMessage = null;
+    });
+
+    try {
+      final result = await DirectDbClient().updateStoredProcedures();
+      setState(() {
+        _isSuccess = true;
+        _resultMessage =
+            'Updated ${result.scriptCount} SQL script(s) '
+            '(${result.batchCount} batch(es)) in ${result.databaseName}.';
+      });
+    } on DatabaseException catch (e) {
+      setState(() {
+        _isSuccess = false;
+        _resultMessage = e.message;
+      });
+    } catch (e) {
+      setState(() {
+        _isSuccess = false;
+        _resultMessage = e.toString();
+      });
+    } finally {
+      setState(() => _isUpdatingQuery = false);
     }
   }
 
@@ -98,16 +128,34 @@ class _TargetsScreenState extends State<TargetsScreen> {
           ],
         ),
         Spacer(),
-        ElevatedButton.icon(
-          onPressed: _isTesting ? null : _testConnection,
-          icon: _isTesting
-              ? SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(Icons.power_settings_new, size: 16),
-          label: Text(_isTesting ? 'Testing...' : 'Test Connection'),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.end,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _isUpdatingQuery ? null : _updateQuery,
+              icon: _isUpdatingQuery
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.system_update_alt, size: 16),
+              label: Text(_isUpdatingQuery ? 'Updating...' : 'Update Query'),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isTesting ? null : _testConnection,
+              icon: _isTesting
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.power_settings_new, size: 16),
+              label: Text(_isTesting ? 'Testing...' : 'Test Connection'),
+            ),
+          ],
         ),
       ],
     );

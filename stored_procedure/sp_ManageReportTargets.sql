@@ -14,7 +14,7 @@ CREATE PROCEDURE dbo.sp_AddReportTarget
     @SmtpServer     NVARCHAR(100) = 'mail.smartouch.com.my',
     @SmtpPort       INT = 587,
     @EmailUser      NVARCHAR(100),
-    @EmailPassword  NVARCHAR(100),
+    @EmailPassword  NVARCHAR(4000),
     @EmailUseTls    BIT = 1,
     @ToEmails       NVARCHAR(MAX),
     @CcEmails       NVARCHAR(MAX) = NULL,
@@ -50,7 +50,7 @@ BEGIN
         @SmtpServer,
         @SmtpPort,
         @EmailUser,
-        @EmailPassword,
+        ENCRYPTBYPASSPHRASE(N'leave-management-report-config', @EmailPassword),
         @EmailUseTls,
         @ToEmails,
         @CcEmails,
@@ -76,7 +76,7 @@ CREATE PROCEDURE dbo.sp_EditReportTarget
     @SmtpServer     NVARCHAR(100) = NULL,
     @SmtpPort       INT = NULL,
     @EmailUser      NVARCHAR(100) = NULL,
-    @EmailPassword  NVARCHAR(100) = NULL,
+    @EmailPassword  NVARCHAR(4000) = NULL,
     @EmailUseTls    BIT = NULL,
     @ToEmails       NVARCHAR(MAX) = NULL,
     @CcEmails       NVARCHAR(MAX) = NULL,
@@ -99,7 +99,10 @@ BEGIN
         smtp_server    = ISNULL(@SmtpServer, smtp_server),
         smtp_port      = ISNULL(@SmtpPort, smtp_port),
         email_user     = ISNULL(@EmailUser, email_user),
-        email_password = ISNULL(@EmailPassword, email_password),
+        email_password = CASE
+            WHEN @EmailPassword IS NULL THEN email_password
+            ELSE ENCRYPTBYPASSPHRASE(N'leave-management-report-config', @EmailPassword)
+        END,
         email_use_tls  = ISNULL(@EmailUseTls, email_use_tls),
         to_emails      = ISNULL(@ToEmails, to_emails),
         cc_emails      = ISNULL(@CcEmails, cc_emails),

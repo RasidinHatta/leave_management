@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_odbc/dart_odbc.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'constants.dart';
 
@@ -14,6 +15,25 @@ class DatabaseException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class StoredProcedureUpdateResult {
+  final int scriptCount;
+  final int batchCount;
+  final String databaseName;
+
+  StoredProcedureUpdateResult({
+    required this.scriptCount,
+    required this.batchCount,
+    required this.databaseName,
+  });
+}
+
+class _SqlScript {
+  final String name;
+  final String sql;
+
+  _SqlScript({required this.name, required this.sql});
 }
 
 class DirectDbClient {
@@ -109,46 +129,96 @@ class DirectDbClient {
     }
   }
 
-  Future<void> runStartupStoredProcedures({String? databaseName}) async {
-    if (kIsWeb) return;
+  Future<StoredProcedureUpdateResult> updateStoredProcedures({
+    String? databaseName,
+  }) async {
+    if (kIsWeb) {
+      throw DatabaseException('Update Query is not supported on web builds.');
+    }
 
     final dbName = (databaseName != null && databaseName.isNotEmpty)
         ? databaseName
         : kDatabaseName;
     if (dbName.isEmpty) {
-      debugPrint('DirectDbClient: Database is not configured.');
-      return;
+      throw DatabaseException('Database is not configured.');
     }
 
     await ensureConnected(databaseName: dbName);
 
-    final dir = await _findStoredProcedureDirectory();
-    if (dir == null) {
-      debugPrint('DirectDbClient: stored_procedure folder not found.');
-      return;
+    final scripts = await _loadStoredProcedureScripts();
+    if (scripts.isEmpty) {
+      throw DatabaseException('No stored procedure SQL scripts were found.');
     }
 
-    final files =
-        dir
-            .listSync()
-            .whereType<File>()
-            .where((file) => file.path.toLowerCase().endsWith('.sql'))
-            .where((file) {
-              final name = file.uri.pathSegments.last.toLowerCase();
-              return name != 'setup_config_database.sql' &&
-                  name != 'sp_managereporttargets.sql';
-            })
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
-
-    for (final file in files) {
-      final sql = await file.readAsString();
-      for (final batch in _splitSqlBatches(sql)) {
+    var batchCount = 0;
+    for (final script in scripts) {
+      await execute('USE ${_sqlIdentifier(dbName)}', databaseName: dbName);
+      for (final batch in _splitSqlBatches(script.sql)) {
         await execute(batch, databaseName: dbName);
+        batchCount++;
       }
     }
 
-    debugPrint('DirectDbClient: Startup stored procedures finished.');
+    debugPrint(
+      'DirectDbClient: Updated ${scripts.length} SQL script(s), $batchCount batch(es).',
+    );
+    return StoredProcedureUpdateResult(
+      scriptCount: scripts.length,
+      batchCount: batchCount,
+      databaseName: dbName,
+    );
+  }
+
+  Future<List<_SqlScript>> _loadStoredProcedureScripts() async {
+    final dir = await _findStoredProcedureDirectory();
+    if (dir != null) {
+      final files =
+          dir
+              .listSync()
+              .whereType<File>()
+              .where((file) => file.path.toLowerCase().endsWith('.sql'))
+              .where((file) {
+                final name = file.uri.pathSegments.last.toLowerCase();
+                return name != 'setup_config_database.sql';
+              })
+              .toList()
+            ..sort((a, b) => a.path.compareTo(b.path));
+
+      final scripts = <_SqlScript>[];
+      for (final file in files) {
+        scripts.add(
+          _SqlScript(
+            name: file.uri.pathSegments.last,
+            sql: await file.readAsString(),
+          ),
+        );
+      }
+      return scripts;
+    }
+
+    const bundledScripts = <String>[
+      'sp_AddBringForwardLeave.sql',
+      'sp_AddBringForwardLeave_Bulk.sql',
+      'sp_AddLeaveRecords_Bulk.sql',
+      'sp_DailyAttendanceLeaveReport.sql',
+      'sp_ManageReportTargets.sql',
+      'sp_ValidateLeaveUser.sql',
+    ];
+
+    final scripts = <_SqlScript>[];
+    for (final name in bundledScripts) {
+      try {
+        scripts.add(
+          _SqlScript(
+            name: name,
+            sql: await rootBundle.loadString('stored_procedure/$name'),
+          ),
+        );
+      } catch (e) {
+        debugPrint('DirectDbClient: Unable to load bundled script $name: $e');
+      }
+    }
+    return scripts;
   }
 
   Future<Directory?> _findStoredProcedureDirectory() async {
@@ -183,6 +253,8 @@ class DirectDbClient {
     if (lastBatch.isNotEmpty) batches.add(lastBatch);
     return batches;
   }
+
+  String _sqlIdentifier(String value) => '[${value.replaceAll(']', ']]')}]';
 
   String _quote(String value) => value.replaceAll("'", "''");
 
@@ -492,6 +564,50 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
   }) async {
     if (list.isEmpty) throw DatabaseException('No records to add.');
 
+    final seenRows = <String>{};
+    for (final item in list) {
+      final empCode = item['empCode'].toString().trim().toUpperCase();
+      final lvDate = item['lvDate'].toString().trim();
+      final lvCode = item['lvCode'].toString().trim().toUpperCase();
+      final key = '$empCode|$lvDate|$lvCode';
+      if (!seenRows.add(key)) {
+        throw DatabaseException(
+          'Duplicate leave code found for employee $empCode on $lvDate.',
+        );
+      }
+    }
+
+    final values = list
+        .map((item) {
+          final empCode = _quote(item['empCode'].toString());
+          final lvDate = _quote(item['lvDate'].toString());
+          final lvCode = _quote(item['lvCode'].toString());
+          return "('$empCode', CAST('$lvDate' AS date), '$lvCode')";
+        })
+        .join(',\n');
+
+    final duplicateRows = await query('''
+SELECT TOP 1
+  CAST(R.EMP_CODE AS VARCHAR(50)) AS empCode,
+  CONVERT(VARCHAR(10), R.LV_DATE, 120) AS lvDate,
+  CAST(R.LV_CODE AS VARCHAR(50)) AS lvCode
+FROM dbo.LV_RECORDS R
+INNER JOIN (VALUES
+$values
+) V(EMP_CODE, LV_DATE, LV_CODE)
+  ON R.EMP_CODE = V.EMP_CODE
+ AND R.LV_DATE = V.LV_DATE
+ AND R.LV_CODE = V.LV_CODE
+WHERE R.LV_EVENT_CODE = 'LEAVE'
+''', databaseName: database);
+
+    if (duplicateRows.isNotEmpty) {
+      final row = duplicateRows.first;
+      throw DatabaseException(
+        'Leave record already exists for employee ${row['empCode']} on ${row['lvDate']} with leave code ${row['lvCode']}.',
+      );
+    }
+
     final buffer = StringBuffer();
     buffer.writeln('DECLARE @List dbo.LeaveImportList;');
     for (final item in list) {
@@ -508,10 +624,34 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     buffer.writeln('EXEC dbo.sp_AddLeaveRecords_Bulk @List = @List;');
 
     await execute(buffer.toString(), databaseName: database);
+
+    final verificationRows = await query('''
+SELECT COUNT(*) AS insertedCount
+FROM dbo.LV_RECORDS R
+INNER JOIN (VALUES
+$values
+) V(EMP_CODE, LV_DATE, LV_CODE)
+  ON R.EMP_CODE = V.EMP_CODE
+ AND R.LV_DATE = V.LV_DATE
+ AND R.LV_CODE = V.LV_CODE
+WHERE R.LV_EVENT_CODE = 'LEAVE'
+''', databaseName: database);
+    final insertedCount = verificationRows.isNotEmpty
+        ? int.tryParse(
+            verificationRows.first['insertedCount']?.toString() ?? '',
+          )
+        : null;
+
+    if (insertedCount != list.length) {
+      throw DatabaseException(
+        'Leave import did not complete. Expected ${list.length} row(s), inserted ${insertedCount ?? 0}.',
+      );
+    }
+
     return {
       'success': true,
       'message':
-          'Successfully added ${list.length} leave records in database $database',
+          'Successfully added $insertedCount leave records in database $database',
     };
   }
 }
