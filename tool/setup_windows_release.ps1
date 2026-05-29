@@ -73,16 +73,10 @@ if ($IsUpdate) {
     Write-Host "Installing to: $InstallPath" -ForegroundColor Cyan
 }
 
-$ExcludedNames = @("setup.ps1", "setup.bat")
-Get-ChildItem -LiteralPath $SourceDir -Force | Where-Object {
-    $ExcludedNames -notcontains $_.Name
-} | ForEach-Object {
-    $Destination = Join-Path $InstallPath $_.Name
-    if ($_.PSIsContainer) {
-        Copy-Item -LiteralPath $_.FullName -Destination $Destination -Recurse -Force
-    } else {
-        Copy-Item -LiteralPath $_.FullName -Destination $Destination -Force
-    }
+& robocopy $SourceDir $InstallPath /E /XF setup.ps1 setup.bat /R:2 /W:1 | Out-Host
+$RoboCopyExitCode = $LASTEXITCODE
+if ($RoboCopyExitCode -ge 8) {
+    throw "Install file copy failed. Robocopy exit code: $RoboCopyExitCode"
 }
 
 if (-not (Test-Path $InstalledExe)) {
@@ -92,6 +86,9 @@ if (-not (Test-Path $InstalledExe)) {
 if ($DesktopShortcut) {
     $DesktopPath = [Environment]::GetFolderPath("Desktop")
     $ShortcutPath = Join-Path $DesktopPath "$AppName.lnk"
+    if (Test-Path $ShortcutPath) {
+        Remove-Item -LiteralPath $ShortcutPath -Force
+    }
     $Shell = New-Object -ComObject WScript.Shell
     $Shortcut = $Shell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = $InstalledExe
