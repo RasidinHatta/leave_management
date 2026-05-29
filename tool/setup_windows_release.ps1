@@ -73,7 +73,11 @@ if ($IsUpdate) {
     Write-Host "Installing to: $InstallPath" -ForegroundColor Cyan
 }
 
-& robocopy $SourceDir $InstallPath /E /XF setup.ps1 setup.bat /R:2 /W:1 | Out-Host
+if ($IsUpdate) {
+    & robocopy $SourceDir $InstallPath /E /XF setup.ps1 setup.bat config.ini /R:2 /W:1 | Out-Host
+} else {
+    & robocopy $SourceDir $InstallPath /E /XF setup.ps1 setup.bat /R:2 /W:1 | Out-Host
+}
 $RoboCopyExitCode = $LASTEXITCODE
 if ($RoboCopyExitCode -ge 8) {
     throw "Install file copy failed. Robocopy exit code: $RoboCopyExitCode"
