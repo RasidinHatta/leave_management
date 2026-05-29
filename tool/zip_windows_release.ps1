@@ -9,6 +9,8 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $PubspecPath = Join-Path $ProjectRoot "pubspec.yaml"
 $ReleaseDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
 $ReleasesDir = Join-Path $ProjectRoot "releases"
+$SetupPs1Source = Join-Path $PSScriptRoot "setup_windows_release.ps1"
+$SetupBatSource = Join-Path $PSScriptRoot "setup_windows_release.bat"
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     if (-not (Test-Path $PubspecPath)) {
@@ -32,6 +34,9 @@ Set-Location $ProjectRoot
 if ($Build) {
     Write-Host "Building Windows release..." -ForegroundColor Cyan
     flutter build windows --release
+    if ($LASTEXITCODE -ne 0) {
+        throw "Flutter Windows release build failed. Release zip was not created."
+    }
 }
 
 if (-not (Test-Path $ReleaseDir)) {
@@ -52,6 +57,9 @@ foreach ($Item in $RequiredItems) {
         throw "Required release item missing: $Path"
     }
 }
+
+Copy-Item -LiteralPath $SetupPs1Source -Destination (Join-Path $ReleaseDir "setup.ps1") -Force
+Copy-Item -LiteralPath $SetupBatSource -Destination (Join-Path $ReleaseDir "setup.bat") -Force
 
 if (-not (Test-Path $ReleasesDir)) {
     New-Item -ItemType Directory -Path $ReleasesDir | Out-Null

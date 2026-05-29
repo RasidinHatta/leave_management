@@ -38,7 +38,7 @@ The app uses two SQL Server connection targets:
 - Main leave database from `[DatabaseConfig]`, for example `MYPAY_LCO`.
 - Report configuration database from `[ReportConfig]`, fixed database name `HR_REPORT_CONFIG`.
 
-On startup, the app creates or repairs required app users and executes the related stored procedure setup files in `stored_procedure/`.
+On startup, the app creates or repairs required app users. Stored procedure scripts in `stored_procedure/` are updated on demand from the DB Targets menu by clicking `Update Query`.
 
 For Leave Report Config, use the `Setup DB` button if `HR_REPORT_CONFIG` or `dbo.report_targets` is missing. Email passwords are stored in the `email_password` column and encrypted in SQL Server.
 
@@ -96,27 +96,51 @@ Use this method for normal users.
 
    ```text
    leave_management.exe
+   setup.bat
+   setup.ps1
    config.ini
    flutter_windows.dll
    data\
    stored_procedure\
    ```
 
-6. Edit `config.ini` in the extracted folder.
+6. To install the app to a local folder, run:
 
-7. Run:
+   ```text
+   setup.bat
+   ```
+
+   The installer asks for an install parent folder. If you enter:
+
+   ```text
+   C:\smartouch
+   ```
+
+   the app is installed to:
+
+   ```text
+   C:\smartouch\SmartLMS
+   ```
+
+   It also asks whether to create a desktop shortcut.
+
+7. Edit `config.ini` in the installed folder.
+
+8. Run:
 
    ```text
    leave_management.exe
    ```
 
-8. On first run, the app connects to the database from `config.ini`, creates or repairs required users, and executes the stored procedure setup files in `stored_procedure\`.
+9. On first run, the app connects to the database from `config.ini` and creates or repairs required users.
+
+10. Open DB Targets and click `Update Query` when you need to create or refresh stored procedures from `stored_procedure\`.
 
 Important:
 
 - Keep `config.ini` beside `leave_management.exe`.
 - Keep the `data\` folder beside `leave_management.exe`.
-- Keep the `stored_procedure\` folder beside `leave_management.exe` so startup setup can run.
+- Keep the `stored_procedure\` folder beside `leave_management.exe` so DB Targets `Update Query` can run.
 - Do not run the exe directly from inside the zip file. Extract it first.
 
 ## Create Release Zip For GitHub
@@ -126,10 +150,10 @@ Use this method when preparing a new release package.
 1. Set the app version in `pubspec.yaml`:
 
    ```yaml
-   version: 1.0.0+1
+   version: 1.0.1+5
    ```
 
-   The part before `+` is the release version. For example, `1.0.0+1` creates a zip ending with `1.0.0`.
+   The part before `+` is the release version. For example, `1.0.1+5` creates a zip ending with `1.0.1`.
 
 2. Build the Windows release:
 
@@ -182,7 +206,7 @@ Use this method when preparing a new release package.
    Example output:
 
    ```text
-   releases\leave_management_windows_release_1.0.0.zip
+   releases\leave_management_windows_release_1.0.1.zip
    ```
 
 Do not commit the full `build\` folder to Git. Flutter build output is ignored by `.gitignore` on purpose.
@@ -213,9 +237,24 @@ The release executable follows the `config.ini` in that Release folder.
 4. Confirm `[ReportConfig]` points to the server that hosts `HR_REPORT_CONFIG`.
 5. Start the app.
 6. Open DB Targets and click `Test Connection`.
-7. Open Leave Report Config and click `Setup DB`, then `Refresh`.
-8. Add or verify report targets.
-9. Open Manage Users and create `USER` or `REPORT` users as needed.
+7. Open DB Targets and click `Update Query` to refresh stored procedures.
+8. Open Leave Report Config and click `Setup DB`, then `Refresh`.
+9. Add or verify report targets.
+10. Open Manage Users and create `USER` or `REPORT` users as needed.
+
+## Changelog
+
+### Version 1.0.1
+
+- Added DB Targets `Update Query` action to run stored procedure scripts on demand.
+- Startup now only creates or repairs login users; stored procedures no longer run automatically on app launch.
+- Updated leave taken and bring-forward stored procedures to recalculate `LV_SUMMARY` from `LV_RECORDS` as the source of truth.
+- `LV_SUMMARY` recalculation now updates all 12 months for the affected employee, year, and leave group.
+- Bring-forward recalculation reads `LV_RECORDS` records with `LV_CODE = 'BF(AL)'`.
+- Leave taken recalculation maps `AL`, `FHA`, and `SHA` to annual leave and refreshes `BF` only for annual leave summaries.
+- Report target stored procedures now encrypt email passwords correctly for the `VARBINARY(MAX)` password column.
+- Added terminal installer scripts, `setup.bat` and `setup.ps1`, with install-location prompt and optional desktop shortcut creation.
+- Release zip script now includes installer scripts and stops if the Windows build fails.
 
 ## Troubleshooting
 
