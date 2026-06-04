@@ -290,7 +290,7 @@ END
   String _sqlCcEmails(String? value) {
     if (value == null) return 'NULL';
     final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed == '0') return 'NULL';
+    if (trimmed.isEmpty) return 'NULL';
     return "N'${_quote(trimmed)}'";
   }
 

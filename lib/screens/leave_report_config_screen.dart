@@ -726,11 +726,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
                   validator: _required,
                 ),
                 SizedBox(height: 12),
-                _field(
-                  _ccEmailsCtrl,
-                  'CC Emails',
-                  'optional@mail.com or 0 to clear',
-                ),
+                _field(_ccEmailsCtrl, 'CC Emails', 'optional@mail.com'),
                 SizedBox(height: 16),
                 Row(
                   children: [
