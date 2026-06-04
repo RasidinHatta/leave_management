@@ -150,10 +150,10 @@ Use this method when preparing a new release package.
 1. Set the app version in `pubspec.yaml`:
 
    ```yaml
-   version: 1.0.1+5
+   version: 1.0.1+7
    ```
 
-   The part before `+` is the release version. For example, `1.0.1+5` creates a zip ending with `1.0.1`.
+   The part before `+` is the release version. For example, `1.0.1+7` creates a zip ending with `1.0.1`.
 
 2. Build the Windows release:
 
@@ -246,6 +246,7 @@ The release executable follows the `config.ini` in that Release folder.
 
 ### Version 1.0.1
 
+- Build `1.0.1+7`: Fixed Leave Report Config edit behavior so clearing `CC Emails` saves correctly and removes the existing `cc_emails` value in `HR_REPORT_CONFIG.dbo.report_targets`.
 - Added DB Targets `Update Query` action to run stored procedure scripts on demand.
 - Startup now only creates or repairs login users; stored procedures no longer run automatically on app launch.
 - Updated leave taken and bring-forward stored procedures to recalculate `LV_SUMMARY` from `LV_RECORDS` as the source of truth.

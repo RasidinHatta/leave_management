@@ -287,9 +287,11 @@ END
     return "N'${_quote(value.trim())}'";
   }
 
-  String _sqlStringAllowEmpty(String? value) {
+  String _sqlCcEmails(String? value) {
     if (value == null) return 'NULL';
-    return "N'${_quote(value.trim())}'";
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed == '0') return 'NULL';
+    return "N'${_quote(trimmed)}'";
   }
 
   Future<Map<String, dynamic>> getConnectionInfo() async {
@@ -424,7 +426,7 @@ EXEC dbo.sp_AddReportTarget
   @EmailPassword = ${_sqlString(target.emailPassword)},
   @EmailUseTls = ${target.emailUseTls ? 1 : 0},
   @ToEmails = ${_sqlString(target.toEmails)},
-  @CcEmails = ${_sqlStringAllowEmpty(target.ccEmails)},
+  @CcEmails = ${_sqlCcEmails(target.ccEmails)},
   @IsActive = ${target.isActive ? 1 : 0}
 ''');
   }
@@ -440,8 +442,14 @@ EXEC dbo.sp_EditReportTarget
   @EmailPassword = ${updatePassword ? _sqlString(target.emailPassword) : 'NULL'},
   @EmailUseTls = ${target.emailUseTls ? 1 : 0},
   @ToEmails = ${_sqlString(target.toEmails)},
-  @CcEmails = ${_sqlStringAllowEmpty(target.ccEmails ?? '')},
+  @CcEmails = ${_sqlCcEmails(target.ccEmails)},
   @IsActive = ${target.isActive ? 1 : 0}
+
+UPDATE dbo.report_targets
+SET
+  cc_emails = ${_sqlCcEmails(target.ccEmails)},
+  updated_at = GETDATE()
+WHERE database_name = ${_sqlString(target.databaseName)}
 ''');
   }
 
