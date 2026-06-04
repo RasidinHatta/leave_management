@@ -560,9 +560,7 @@ class _ReportTargetDialogState extends State<_ReportTargetDialog> {
       emailPassword: _emailPasswordCtrl.text,
       emailUseTls: _emailUseTls,
       toEmails: _toEmailsCtrl.text.trim(),
-      ccEmails: _ccEmailsCtrl.text.trim().isEmpty
-          ? null
-          : _ccEmailsCtrl.text.trim(),
+      ccEmails: _ccEmailsCtrl.text.trim(),
       isActive: _isActive,
     );
 

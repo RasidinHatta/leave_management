@@ -287,6 +287,11 @@ END
     return "N'${_quote(value.trim())}'";
   }
 
+  String _sqlStringAllowEmpty(String? value) {
+    if (value == null) return 'NULL';
+    return "N'${_quote(value.trim())}'";
+  }
+
   Future<Map<String, dynamic>> getConnectionInfo() async {
     await ensureConnected();
     try {
@@ -419,7 +424,7 @@ EXEC dbo.sp_AddReportTarget
   @EmailPassword = ${_sqlString(target.emailPassword)},
   @EmailUseTls = ${target.emailUseTls ? 1 : 0},
   @ToEmails = ${_sqlString(target.toEmails)},
-  @CcEmails = ${_sqlString(target.ccEmails)},
+  @CcEmails = ${_sqlStringAllowEmpty(target.ccEmails)},
   @IsActive = ${target.isActive ? 1 : 0}
 ''');
   }
@@ -435,7 +440,7 @@ EXEC dbo.sp_EditReportTarget
   @EmailPassword = ${updatePassword ? _sqlString(target.emailPassword) : 'NULL'},
   @EmailUseTls = ${target.emailUseTls ? 1 : 0},
   @ToEmails = ${_sqlString(target.toEmails)},
-  @CcEmails = ${_sqlString(target.ccEmails)},
+  @CcEmails = ${_sqlStringAllowEmpty(target.ccEmails ?? '')},
   @IsActive = ${target.isActive ? 1 : 0}
 ''');
   }
