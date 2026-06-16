@@ -12,7 +12,7 @@ String kDatabaseName = '';
 String kDriverName = 'ODBC Driver 17 for SQL Server';
 
 String kReportDatabaseName = 'HR_REPORT_CONFIG';
-String kReportServerName = '';
+String kReportServerName = 'v1soho.com,1500';
 String kReportDriverName = 'ODBC Driver 17 for SQL Server';
 
 String get kOdbcConnectionString =>
@@ -63,7 +63,6 @@ Future<void> loadConfig() async {
   final database = config.get(section, 'Database')?.trim() ?? '';
   final driver = config.get(section, 'Driver')?.trim();
   final reportServer = config.get('ReportConfig', 'Server')?.trim();
-  final reportDriver = config.get('ReportConfig', 'Driver')?.trim();
 
   if (server.isEmpty || database.isEmpty) {
     throw Exception(
@@ -79,10 +78,8 @@ Future<void> loadConfig() async {
 
   kReportServerName = reportServer != null && reportServer.isNotEmpty
       ? reportServer
-      : server;
-  kReportDriverName = reportDriver != null && reportDriver.isNotEmpty
-      ? reportDriver
-      : kDriverName;
+      : 'v1soho.com,1500';
+  kReportDriverName = kDriverName;
 }
 
 Future<String> _loadConfigText() async {

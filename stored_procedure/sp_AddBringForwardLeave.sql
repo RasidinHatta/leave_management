@@ -26,9 +26,12 @@ BEGIN
         'BF(AL)',
         @DAY_,
         GETDATE(),
-        @REMARK,
+        ISNULL(
+            @REMARK,
+            CONCAT('Bringforward from year ', YEAR(GETDATE()) - 1, ', System Generate (BF).')
+        ),
         'BRINGFORWARD',
-        'LEAVE'
+        'SMARTLMS'
     );
 END;
 GO

@@ -52,7 +52,6 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   final _databaseCtrl = TextEditingController();
 
   int _selectedYear = DateTime.now().year;
-  int _selectedMonth = DateTime.now().month;
 
   List<Map<String, dynamic>> _targets = [];
   String? _selectedDatabase;
@@ -315,8 +314,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             SizedBox(height: 8),
             Text(
               'Target Database: $db\n'
-              'Target Year: $_selectedYear\n'
-              'Target Month: $_selectedMonth',
+              'Target Year: $_selectedYear',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12,
@@ -354,7 +352,6 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       final result = await DirectDbClient().addBringForwardLeave(
         database: db,
         year: _selectedYear,
-        month: _selectedMonth,
         list: validRows.map((r) => r.toMap()).toList(),
       );
       setState(() {
@@ -439,7 +436,6 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       ),
       child: Row(
         children: [
-          // Target Year Dropdown
           Expanded(
             child: DropdownButtonFormField<int>(
               isExpanded: true,
@@ -470,56 +466,6 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
               onChanged: (val) {
                 setState(() {
                   _selectedYear = val ?? DateTime.now().year;
-                });
-              },
-            ),
-          ),
-          SizedBox(width: 16),
-          // Target Month Dropdown
-          Expanded(
-            child: DropdownButtonFormField<int>(
-              isExpanded: true,
-              initialValue: _selectedMonth,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
-              dropdownColor: AppColors.surfaceElevated,
-              decoration: InputDecoration(
-                labelText: 'Target Month *',
-                prefixIcon: Icon(Icons.calendar_view_month_outlined, size: 18),
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
-              items: List.generate(12, (index) => index + 1).map((month) {
-                final monthNames = [
-                  'January',
-                  'February',
-                  'March',
-                  'April',
-                  'May',
-                  'June',
-                  'July',
-                  'August',
-                  'September',
-                  'October',
-                  'November',
-                  'December',
-                ];
-                return DropdownMenuItem<int>(
-                  value: month,
-                  child: Text(
-                    '$month - ${monthNames[month - 1]}',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  _selectedMonth = val ?? 12;
                 });
               },
             ),

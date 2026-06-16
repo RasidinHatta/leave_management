@@ -37,9 +37,7 @@ class ReportConfigDbClient {
     if (_isConnected) return;
 
     if (kReportServerName.isEmpty) {
-      throw DatabaseException(
-        'config.ini must contain Server under [ReportConfig].',
-      );
+      throw DatabaseException('Report config server is not configured.');
     }
 
     await _ensureDatabaseExists();

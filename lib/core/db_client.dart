@@ -36,6 +36,14 @@ class _SqlScript {
   _SqlScript({required this.name, required this.sql});
 }
 
+const List<String> _mainDatabaseStoredProcedureScripts = [
+  'sp_AddBringForwardLeave.sql',
+  'sp_AddBringForwardLeave_Bulk.sql',
+  'sp_AddLeaveRecords_Bulk.sql',
+  'sp_DailyAttendanceLeaveReport.sql',
+  'sp_ValidateLeaveUser.sql',
+];
+
 class DirectDbClient {
   static final DirectDbClient _instance = DirectDbClient._internal();
   factory DirectDbClient() => _instance;
@@ -179,7 +187,9 @@ class DirectDbClient {
               .where((file) => file.path.toLowerCase().endsWith('.sql'))
               .where((file) {
                 final name = file.uri.pathSegments.last.toLowerCase();
-                return name != 'setup_config_database.sql';
+                return _mainDatabaseStoredProcedureScripts.any(
+                  (scriptName) => scriptName.toLowerCase() == name,
+                );
               })
               .toList()
             ..sort((a, b) => a.path.compareTo(b.path));
@@ -196,17 +206,8 @@ class DirectDbClient {
       return scripts;
     }
 
-    const bundledScripts = <String>[
-      'sp_AddBringForwardLeave.sql',
-      'sp_AddBringForwardLeave_Bulk.sql',
-      'sp_AddLeaveRecords_Bulk.sql',
-      'sp_DailyAttendanceLeaveReport.sql',
-      'sp_ManageReportTargets.sql',
-      'sp_ValidateLeaveUser.sql',
-    ];
-
     final scripts = <_SqlScript>[];
-    for (final name in bundledScripts) {
+    for (final name in _mainDatabaseStoredProcedureScripts) {
       try {
         scripts.add(
           _SqlScript(
@@ -532,7 +533,6 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
   Future<Map<String, dynamic>> addBringForwardLeave({
     required String database,
     required int year,
-    required int month,
     required List<Map<String, dynamic>> list,
   }) async {
     if (list.isEmpty) throw DatabaseException('No records to add.');
@@ -547,7 +547,7 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
       );
     }
     buffer.writeln(
-      'EXEC dbo.sp_AddBringForwardLeave_Bulk @Year = $year, @Month = $month, @List = @List;',
+      'EXEC dbo.sp_AddBringForwardLeave_Bulk @Year = $year, @Month = 1, @List = @List;',
     );
 
     await execute(buffer.toString(), databaseName: database);

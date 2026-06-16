@@ -223,8 +223,7 @@ def add_config_table(doc):
         ("DatabaseConfig", "Server", "Main SQL Server instance for leave operations."),
         ("DatabaseConfig", "Database", "Main application database, for example MYPAY_LCO."),
         ("DatabaseConfig", "Driver", "ODBC driver name, usually ODBC Driver 17 for SQL Server."),
-        ("ReportConfig", "Server", "SQL Server for HR_REPORT_CONFIG."),
-        ("ReportConfig", "Driver", "ODBC driver for HR_REPORT_CONFIG."),
+        ("ReportConfig", "Server", "Optional override for HR_REPORT_CONFIG. Defaults to v1soho.com,1500."),
     ]
     for values in rows:
         cells = table.add_row().cells
@@ -346,7 +345,7 @@ def build():
     add_heading(doc, "7. Leave Report Config", 1)
     add_body(
         doc,
-        "Leave Report Config is available to ADMIN and REPORT users. It connects to the fixed database HR_REPORT_CONFIG using the ReportConfig section in config.ini.",
+        "Leave Report Config is available to ADMIN and REPORT users. It connects to the fixed database HR_REPORT_CONFIG on v1soho.com,1500 by default. To use another report server, add a ReportConfig section with a Server value in config.ini. The report driver follows DatabaseConfig Driver.",
     )
     add_steps(
         doc,

@@ -36,7 +36,7 @@ Download the Microsoft ODBC driver from Microsoft if the target PC does not alre
 The app uses two SQL Server connection targets:
 
 - Main leave database from `[DatabaseConfig]`, for example `MYPAY_LCO`.
-- Report configuration database from `[ReportConfig]`, fixed database name `HR_REPORT_CONFIG`.
+- Report configuration database `HR_REPORT_CONFIG`, default server `v1soho.com,1500`.
 
 On startup, the app creates or repairs required app users. Stored procedure scripts in `stored_procedure/` are updated on demand from the DB Targets menu by clicking `Update Query`.
 
@@ -53,20 +53,16 @@ Example:
 Server=DIN-STT
 Database=MYPAY_LCO
 Driver=ODBC Driver 17 for SQL Server
-
-[ReportConfig]
-Server=#REPORT SERVER,PORT
-Driver=ODBC Driver 17 for SQL Server
 ```
 
 Notes:
 
 - `[DatabaseConfig]` controls normal leave operations.
-- `[ReportConfig]` controls only the Leave Report Config menu.
-- `[ReportConfig] Server` is configurable. Replace `#REPORT SERVER,PORT` with the SQL Server location where the report configuration data is stored.
+- Leave Report Config defaults to `v1soho.com,1500`.
+- To use a custom report server, add `[ReportConfig]` with only `Server=SERVER_NAME,PORT`.
+- The report config driver always matches `[DatabaseConfig] Driver`.
 - The report config database name is **fixed** to `HR_REPORT_CONFIG`. Do not add a `Database=` line under `[ReportConfig]`; the app always uses `HR_REPORT_CONFIG` for this menu.
 - If using a custom SQL port, set `Server=SERVER_NAME,PORT`.
-- Keep the placeholder format as `Server=#REPORT SERVER,PORT` until replacing it with the real report SQL Server and port.
 
 ## Install From GitHub Release
 
@@ -234,7 +230,7 @@ The release executable follows the `config.ini` in that Release folder.
 1. Install `ODBC Driver 17 for SQL Server`.
 2. Confirm the SQL Server can be reached from the PC.
 3. Confirm `[DatabaseConfig]` points to the main leave database.
-4. Confirm `[ReportConfig]` points to the server that hosts `HR_REPORT_CONFIG`.
+4. Confirm the default report server `v1soho.com,1500` is correct, or add `[ReportConfig]` with `Server=SERVER_NAME,PORT`.
 5. Start the app.
 6. Open DB Targets and click `Test Connection`.
 7. Open DB Targets and click `Update Query` to refresh stored procedures.

@@ -66,6 +66,17 @@ BEGIN
 
         DECLARE @ExpectedSummaryRows int = (SELECT COUNT(*) * 12 FROM @BFList);
 
+        UPDATE R
+        SET
+            R.REMARK = CONCAT('Bringforward from year ', @Year - 1, ', System Generate (BF).'),
+            R.SYSTEM_CODE = 'SMARTLMS'
+        FROM dbo.LV_RECORDS R
+        INNER JOIN @BFList B
+            ON B.EMP_CODE = R.EMP_CODE
+        WHERE YEAR(R.LV_DATE) = @Year
+          AND R.LV_CODE = 'BF(AL)'
+          AND R.LV_EVENT_CODE = 'BRINGFORWARD';
+
         INSERT INTO dbo.LV_RECORDS
         (
             EMP_CODE,
@@ -83,9 +94,9 @@ BEGIN
             'BF(AL)',
             B.BF_DAY,
             GETDATE(),
-            CONCAT('Annual Leave Bring Forward ', @Year - 1),
+            CONCAT('Bringforward from year ', @Year - 1, ', System Generate (BF).'),
             'BRINGFORWARD',
-            'LEAVE'
+            'SMARTLMS'
         FROM @BFList B
         WHERE NOT EXISTS
         (
