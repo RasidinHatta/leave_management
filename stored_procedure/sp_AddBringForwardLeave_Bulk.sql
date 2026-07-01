@@ -45,9 +45,9 @@ BEGIN
             THROW 50004, 'No bring forward leave records were provided for import.', 1;
         END;
 
-        IF EXISTS
+        DECLARE @NotInit nvarchar(max) =
         (
-            SELECT 1
+            SELECT STRING_AGG(B.EMP_CODE, ', ')
             FROM @BFList B
             OUTER APPLY
             (
@@ -59,9 +59,12 @@ BEGIN
                   AND S.MONTH_ BETWEEN 1 AND 12
             ) M
             WHERE ISNULL(M.SUMMARY_MONTHS, 0) <> 12
-        )
+        );
+
+        IF @NotInit IS NOT NULL
         BEGIN
-            THROW 50002, 'LV_SUMMARY must contain all 12 months for annual leave. Please initialize employee leave first.', 1;
+            DECLARE @msg nvarchar(max) = CONCAT('Please initialize employee leave first before adding BF for staff: ', @NotInit);
+            THROW 50002, @msg, 1;
         END;
 
         DECLARE @ExpectedSummaryRows int = (SELECT COUNT(*) * 12 FROM @BFList);

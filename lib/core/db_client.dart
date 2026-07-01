@@ -137,6 +137,49 @@ class DirectDbClient {
     }
   }
 
+  /// Runs a stored-procedure batch and surfaces server errors.
+  /// Plain execute() only reads the first result set, so a THROW fired after
+  /// other statements in the SP is silently lost. Wrapping in TRY/CATCH makes
+  /// the error come back as a row we can detect and re-throw.
+  Future<void> executeSp(String sqlStr, {String? databaseName}) async {
+    await ensureConnected(databaseName: databaseName);
+    final wrapped =
+        'BEGIN TRY\n$sqlStr\nEND TRY\n'
+        'BEGIN CATCH\nSELECT ERROR_MESSAGE() AS __errmsg;\nEND CATCH';
+    try {
+      final rows = await _odbc.execute(wrapped);
+      if (rows.isNotEmpty && rows.first.containsKey('__errmsg')) {
+        throw DatabaseException(
+          rows.first['__errmsg']?.toString() ?? 'Stored procedure failed.',
+        );
+      }
+    } on DatabaseException {
+      rethrow;
+    } catch (e) {
+      throw DatabaseException('SQL execution failed: $e');
+    }
+  }
+
+  /// Throws "Staff X doesnt exist" if any emp code in [list] is missing from dbo.STAFF.
+  Future<void> _assertStaffExist(
+    List<Map<String, dynamic>> list,
+    String database,
+  ) async {
+    final empValues = list
+        .map((item) => "('${_quote(item['empCode'].toString())}')")
+        .toSet()
+        .join(',');
+    final missing = await query(
+      "SELECT V.EMP_CODE FROM (VALUES $empValues) V(EMP_CODE) "
+      "WHERE NOT EXISTS (SELECT 1 FROM dbo.STAFF S WHERE S.EMP_CODE = V.EMP_CODE)",
+      databaseName: database,
+    );
+    if (missing.isNotEmpty) {
+      final codes = missing.map((r) => r['EMP_CODE']).join(', ');
+      throw DatabaseException('Staff $codes doesnt exist');
+    }
+  }
+
   Future<StoredProcedureUpdateResult> updateStoredProcedures({
     String? databaseName,
   }) async {
@@ -290,7 +333,7 @@ SELECT
         }
         if (roleExists != 1) {
           await execute(
-            "ALTER TABLE dbo.LV_SYS_USER ADD ROLE VARCHAR(20) DEFAULT 'USER'",
+            "IF COL_LENGTH('dbo.LV_SYS_USER', 'ROLE') IS NULL ALTER TABLE dbo.LV_SYS_USER ADD ROLE VARCHAR(20) DEFAULT 'USER'",
             databaseName: databaseName,
           );
         }
@@ -537,6 +580,8 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
   }) async {
     if (list.isEmpty) throw DatabaseException('No records to add.');
 
+    await _assertStaffExist(list, database);
+
     final buffer = StringBuffer();
     buffer.writeln('DECLARE @List dbo.BringForwardLeaveList;');
     for (final item in list) {
@@ -550,7 +595,8 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
       'EXEC dbo.sp_AddBringForwardLeave_Bulk @Year = $year, @Month = 1, @List = @List;',
     );
 
-    await execute(buffer.toString(), databaseName: database);
+    await executeSp(buffer.toString(), databaseName: database);
+
     return {
       'success': true,
       'message':
@@ -608,6 +654,8 @@ WHERE R.LV_EVENT_CODE = 'LEAVE'
       );
     }
 
+    await _assertStaffExist(list, database);
+
     final buffer = StringBuffer();
     buffer.writeln('DECLARE @List dbo.LeaveImportList;');
     for (final item in list) {
@@ -623,35 +671,12 @@ WHERE R.LV_EVENT_CODE = 'LEAVE'
     }
     buffer.writeln('EXEC dbo.sp_AddLeaveRecords_Bulk @List = @List;');
 
-    await execute(buffer.toString(), databaseName: database);
-
-    final verificationRows = await query('''
-SELECT COUNT(*) AS insertedCount
-FROM dbo.LV_RECORDS R
-INNER JOIN (VALUES
-$values
-) V(EMP_CODE, LV_DATE, LV_CODE)
-  ON R.EMP_CODE = V.EMP_CODE
- AND R.LV_DATE = V.LV_DATE
- AND R.LV_CODE = V.LV_CODE
-WHERE R.LV_EVENT_CODE = 'LEAVE'
-''', databaseName: database);
-    final insertedCount = verificationRows.isNotEmpty
-        ? int.tryParse(
-            verificationRows.first['insertedCount']?.toString() ?? '',
-          )
-        : null;
-
-    if (insertedCount != list.length) {
-      throw DatabaseException(
-        'Leave import did not complete. Expected ${list.length} row(s), inserted ${insertedCount ?? 0}.',
-      );
-    }
+    await executeSp(buffer.toString(), databaseName: database);
 
     return {
       'success': true,
       'message':
-          'Successfully added $insertedCount leave records in database $database',
+          'Successfully added ${list.length} leave records in database $database',
     };
   }
 }
