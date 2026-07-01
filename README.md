@@ -240,6 +240,13 @@ The release executable follows the `config.ini` in that Release folder.
 
 ## Changelog
 
+### Version 1.0.2
+
+- Build `1.0.2+9`: Bring Forward and Leave Taken now validate employee codes against `dbo.STAFF` before import. Missing staff produce a clear `Staff <code> doesnt exist` error, and the whole batch is rejected (strict, all-or-nothing) so no partial import happens.
+- Stored procedure errors are no longer swallowed. Previously a `THROW` inside a procedure (e.g. rollback) could still report success; operations now surface the real failure message.
+- Bring Forward "initialize employee leave first" message now names the affected staff code(s).
+- Fixed a duplicate `ROLE` column error when repairing the `dbo.LV_SYS_USER` table on startup.
+
 ### Version 1.0.1
 
 - Build `1.0.1+7`: Fixed Leave Report Config edit behavior so clearing `CC Emails` saves correctly and removes the existing `cc_emails` value in `HR_REPORT_CONFIG.dbo.report_targets`.
