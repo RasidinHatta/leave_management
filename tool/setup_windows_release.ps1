@@ -5,11 +5,40 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppExe = "leave_management.exe"
 $AppName = "SmartLMS"
 $InstallFolderName = "SmartLMS"
 $DefaultInstallPath = Join-Path $env:LOCALAPPDATA "Programs\$InstallFolderName"
+
+# In a release zip this script is renamed to setup.ps1 and sits beside the
+# executable. When run directly from the repository's tool folder, use the
+# standard Flutter release output instead.
+$SourceDir = $ScriptDir
+if (-not (Test-Path (Join-Path $SourceDir $AppExe) -PathType Leaf)) {
+    $ProjectRoot = Split-Path -Parent $ScriptDir
+    $ReleaseDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
+    if (Test-Path (Join-Path $ReleaseDir $AppExe) -PathType Leaf) {
+        $SourceDir = $ReleaseDir
+    }
+}
+
+$SourceExe = Join-Path $SourceDir $AppExe
+if (-not (Test-Path $SourceExe -PathType Leaf)) {
+    throw "Cannot find $AppExe. Extract the release zip before running setup.ps1, or run 'flutter build windows --release' before running this tool from the repository."
+}
+
+$SourceConfig = Join-Path $SourceDir "config.ini"
+if (-not (Test-Path $SourceConfig -PathType Leaf)) {
+    throw "Cannot find config.ini in the release source: $SourceDir"
+}
+
+foreach ($RequiredDirectory in @("data", "stored_procedure")) {
+    $RequiredPath = Join-Path $SourceDir $RequiredDirectory
+    if (-not (Test-Path $RequiredPath -PathType Container)) {
+        throw "Cannot find required release directory: $RequiredPath"
+    }
+}
 
 Write-Host ""
 Write-Host "HR Leave Management installer" -ForegroundColor Cyan
@@ -35,17 +64,14 @@ if (-not $DesktopShortcut) {
         $ShortcutAnswer.Trim().ToLowerInvariant().StartsWith("y")
 }
 
-$SourceExe = Join-Path $SourceDir $AppExe
-if (-not (Test-Path $SourceExe)) {
-    throw "Cannot find $AppExe beside setup.ps1. Extract the release zip first, then run setup.ps1 from the extracted folder."
-}
-
 if (-not (Test-Path $InstallPath)) {
     New-Item -ItemType Directory -Path $InstallPath | Out-Null
 }
 
 $InstalledExe = Join-Path $InstallPath $AppExe
-$IsUpdate = Test-Path $InstalledExe
+$IsUpdate = Test-Path $InstalledExe -PathType Leaf
+$InstalledConfig = Join-Path $InstallPath "config.ini"
+$PreserveInstalledConfig = Test-Path $InstalledConfig -PathType Leaf
 
 if ($IsUpdate) {
     Write-Host ""
@@ -73,7 +99,7 @@ if ($IsUpdate) {
     Write-Host "Installing to: $InstallPath" -ForegroundColor Cyan
 }
 
-if ($IsUpdate) {
+if ($PreserveInstalledConfig) {
     & robocopy $SourceDir $InstallPath /E /XF setup.ps1 setup.bat config.ini /R:2 /W:1 | Out-Host
 } else {
     & robocopy $SourceDir $InstallPath /E /XF setup.ps1 setup.bat /R:2 /W:1 | Out-Host
@@ -85,6 +111,13 @@ if ($RoboCopyExitCode -ge 8) {
 
 if (-not (Test-Path $InstalledExe)) {
     throw "Install failed: $InstalledExe was not copied."
+}
+if (-not (Test-Path $InstalledConfig -PathType Leaf)) {
+    throw "Install failed: $InstalledConfig was not copied."
+}
+
+if ($PreserveInstalledConfig) {
+    Write-Host "Preserved existing configuration: $InstalledConfig" -ForegroundColor Green
 }
 
 if ($DesktopShortcut) {

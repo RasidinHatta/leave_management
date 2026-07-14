@@ -44,7 +44,10 @@ For Leave Report Config, use the `Setup DB` button if `HR_REPORT_CONFIG` or `dbo
 
 ## config.ini
 
-The app reads `config.ini` from the same folder as `leave_management.exe` first. If it is not found there, it falls back to the bundled asset copy.
+During `flutter run -d windows`, a debug build reads `config.ini` from the
+project working directory first. Editing that file and performing a hot restart
+reloads the new values. Release builds read `config.ini` from the same folder as
+`leave_management.exe`; if it is missing, they fall back to the bundled asset.
 
 Example:
 

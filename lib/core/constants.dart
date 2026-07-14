@@ -84,6 +84,18 @@ Future<void> loadConfig() async {
 
 Future<String> _loadConfigText() async {
   if (!kIsWeb) {
+    // `flutter run -d windows` starts the app with the project root as its
+    // working directory. Prefer that config in debug mode so a hot restart
+    // reloads edits without requiring CMake to recopy the file.
+    if (kDebugMode) {
+      final developmentConfig = File(
+        '${Directory.current.path}${Platform.pathSeparator}config.ini',
+      );
+      if (await developmentConfig.exists()) {
+        return developmentConfig.readAsString();
+      }
+    }
+
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     final externalConfig = File('$exeDir${Platform.pathSeparator}config.ini');
     if (await externalConfig.exists()) {
