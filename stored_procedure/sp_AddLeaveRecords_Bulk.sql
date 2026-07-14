@@ -203,60 +203,10 @@ BEGIN
         END;
 
         ------------------------------------------------------------
-        -- 5. Validate LV_SUMMARY exists for mapped leave group
-        --    Example:
-        --    AL/FHA/SHA updates AL summary
-        --    FML/SML updates ML summary
-        ------------------------------------------------------------
-        IF EXISTS
-        (
-            SELECT 1
-            FROM
-            (
-                SELECT
-                    L.EMP_CODE,
-                    YEAR(L.LV_DATE) AS YEAR_,
-
-                    CASE 
-                        WHEN L.LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
-                        WHEN L.LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
-                        WHEN L.LV_CODE IN ('FEL', 'SEL') THEN 'EL'
-                        WHEN L.LV_CODE IN ('FML', 'SML') THEN 'ML'
-                        WHEN L.LV_CODE IN ('FSD', 'SSD') THEN 'STD'
-                        WHEN L.LV_CODE IN ('FUL', 'SUL') THEN 'UL'
-                        ELSE L.LV_CODE
-                    END AS LV_GROUP_CODE
-                FROM @List L
-                GROUP BY
-                    L.EMP_CODE,
-                    YEAR(L.LV_DATE),
-                    CASE 
-                        WHEN L.LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
-                        WHEN L.LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
-                        WHEN L.LV_CODE IN ('FEL', 'SEL') THEN 'EL'
-                        WHEN L.LV_CODE IN ('FML', 'SML') THEN 'ML'
-                        WHEN L.LV_CODE IN ('FSD', 'SSD') THEN 'STD'
-                        WHEN L.LV_CODE IN ('FUL', 'SUL') THEN 'UL'
-                        ELSE L.LV_CODE
-                    END
-            ) X
-            OUTER APPLY
-            (
-                SELECT COUNT(DISTINCT S.MONTH_) AS SUMMARY_MONTHS
-                FROM dbo.[LV_SUMMARY] S
-                WHERE S.EMP_CODE = X.EMP_CODE
-                  AND S.YEAR_ = X.YEAR_
-                  AND S.LV_GROUP_CODE = X.LV_GROUP_CODE
-                  AND S.MONTH_ BETWEEN 1 AND 12
-            ) M
-            WHERE ISNULL(M.SUMMARY_MONTHS, 0) <> 12
-        )
-        BEGIN
-            THROW 50002, 'LV_SUMMARY must contain all 12 months for the mapped leave group. Please initialize employee leave first.', 1;
-        END;
-
-        ------------------------------------------------------------
-        -- 6. Store inserted leave records
+        -- 5. Store inserted leave records
+        -- LV_RECORDS is allowed to receive valid leave before LV_SUMMARY is
+        -- initialized. Recalculation below updates whichever summary months
+        -- exist and can be run again after the remaining months are created.
         ------------------------------------------------------------
         DECLARE @InsertedLeave TABLE
         (
@@ -518,47 +468,11 @@ BEGIN
 
         DECLARE @UpdatedSummaryRows int = @@ROWCOUNT;
 
-        DECLARE @ExpectedSummaryRows int =
-        (
-            SELECT COUNT(*) * 12
-            FROM
-            (
-                SELECT
-                    EMP_CODE,
-                    YEAR(LV_DATE) AS YEAR_,
-                    CASE 
-                        WHEN LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
-                        WHEN LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
-                        WHEN LV_CODE IN ('FEL', 'SEL') THEN 'EL'
-                        WHEN LV_CODE IN ('FML', 'SML') THEN 'ML'
-                        WHEN LV_CODE IN ('FSD', 'SSD') THEN 'STD'
-                        WHEN LV_CODE IN ('FUL', 'SUL') THEN 'UL'
-                        ELSE LV_CODE
-                    END AS LV_GROUP_CODE
-                FROM @InsertedLeave
-                GROUP BY
-                    EMP_CODE,
-                    YEAR(LV_DATE),
-                    CASE 
-                        WHEN LV_CODE IN ('AL', 'FHA', 'SHA') THEN 'AL'
-                        WHEN LV_CODE IN ('FCP', 'SCP') THEN 'CPL'
-                        WHEN LV_CODE IN ('FEL', 'SEL') THEN 'EL'
-                        WHEN LV_CODE IN ('FML', 'SML') THEN 'ML'
-                        WHEN LV_CODE IN ('FSD', 'SSD') THEN 'STD'
-                        WHEN LV_CODE IN ('FUL', 'SUL') THEN 'UL'
-                        ELSE LV_CODE
-                    END
-            ) X
-        );
-
-        IF @UpdatedSummaryRows <> @ExpectedSummaryRows
-        BEGIN
-            THROW 50011, 'Leave records were inserted but LV_SUMMARY recalculation did not update all 12 months for each affected leave group.', 1;
-        END;
-
         COMMIT;
 
-        SELECT @InsertedCount AS insertedCount;
+        SELECT
+            @InsertedCount AS insertedCount,
+            @UpdatedSummaryRows AS updatedSummaryRows;
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0

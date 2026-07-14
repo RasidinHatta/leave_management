@@ -98,9 +98,13 @@ BEGIN
         FROM
         (
             SELECT DATEADD(DAY, V.number, P.LeaveEndDate) AS CheckDate
-            FROM master.dbo.spt_values V
-            WHERE V.type = 'P'
-              AND V.number BETWEEN 1 AND 60
+            FROM
+            (
+                SELECT (T.number * 10) + O.number AS number
+                FROM (VALUES (0),(1),(2),(3),(4),(5),(6)) T(number)
+                CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) O(number)
+            ) V
+            WHERE V.number BETWEEN 1 AND 60
         ) X
 
         LEFT JOIN dbo.SHIFTCHILD SC

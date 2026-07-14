@@ -160,6 +160,94 @@ class DirectDbClient {
     }
   }
 
+  Future<void> _assertLeaveRecordsInserted(
+    List<Map<String, dynamic>> list,
+    String database,
+  ) async {
+    final values = list
+        .map((item) {
+          final empCode = _quote(item['empCode'].toString());
+          final lvDate = _quote(item['lvDate'].toString());
+          final lvCode = _quote(item['lvCode'].toString());
+          return "('$empCode', CAST('$lvDate' AS date), '$lvCode')";
+        })
+        .join(',\n');
+
+    final missingRows = await query('''
+SELECT TOP 1
+  CAST(V.EMP_CODE AS VARCHAR(50)) AS empCode,
+  CONVERT(VARCHAR(10), V.LV_DATE, 120) AS lvDate,
+  CAST(V.LV_CODE AS VARCHAR(50)) AS lvCode
+FROM (VALUES
+$values
+) V(EMP_CODE, LV_DATE, LV_CODE)
+WHERE NOT EXISTS
+(
+  SELECT 1
+  FROM dbo.LV_RECORDS R
+  WHERE R.EMP_CODE = V.EMP_CODE
+    AND R.LV_DATE = V.LV_DATE
+    AND R.LV_CODE = V.LV_CODE
+    AND R.LV_EVENT_CODE = 'LEAVE'
+)
+''', databaseName: database);
+
+    if (missingRows.isNotEmpty) {
+      final row = missingRows.first;
+      throw DatabaseException(
+        'The leave procedure completed without inserting employee '
+        '${row['empCode']} on ${row['lvDate']} (${row['lvCode']}) into '
+        '$kServerName / $database. Check the stored procedure and LV_SUMMARY '
+        'setup in that database.',
+      );
+    }
+  }
+
+  Future<void> _assertBringForwardRecordsSaved(
+    List<Map<String, dynamic>> list,
+    String database,
+    int year,
+  ) async {
+    final values = list
+        .map((item) {
+          final empCode = _quote(item['empCode'].toString());
+          final day = double.parse(item['day'].toString());
+          return "('$empCode', CAST($day AS decimal(18,2)))";
+        })
+        .join(',\n');
+
+    final missingRows = await query('''
+SELECT TOP 1
+  CAST(V.EMP_CODE AS VARCHAR(50)) AS empCode
+FROM
+(
+  SELECT EMP_CODE, SUM(DAY_) AS DAY_
+  FROM (VALUES
+$values
+  ) I(EMP_CODE, DAY_)
+  GROUP BY EMP_CODE
+) V
+WHERE NOT EXISTS
+(
+  SELECT 1
+  FROM dbo.LV_RECORDS R
+  WHERE R.EMP_CODE = V.EMP_CODE
+    AND YEAR(R.LV_DATE) = $year
+    AND R.LV_CODE = 'BF(AL)'
+    AND R.LV_EVENT_CODE = 'BRINGFORWARD'
+    AND R.DAY_ = V.DAY_
+)
+''', databaseName: database);
+
+    if (missingRows.isNotEmpty) {
+      throw DatabaseException(
+        'Bring forward leave was not saved with the requested value for '
+        'employee ${missingRows.first['empCode']} in '
+        '$kServerName / $database.',
+      );
+    }
+  }
+
   /// Throws "Staff X doesnt exist" if any emp code in [list] is missing from dbo.STAFF.
   Future<void> _assertStaffExist(
     List<Map<String, dynamic>> list,
@@ -596,11 +684,12 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     );
 
     await executeSp(buffer.toString(), databaseName: database);
+    await _assertBringForwardRecordsSaved(list, database, year);
 
     return {
       'success': true,
       'message':
-          'Successfully added ${list.length} bring forward leave records in database $database',
+          'Successfully added ${list.length} bring forward leave records in $kServerName / $database',
     };
   }
 
@@ -672,11 +761,15 @@ WHERE R.LV_EVENT_CODE = 'LEAVE'
     buffer.writeln('EXEC dbo.sp_AddLeaveRecords_Bulk @List = @List;');
 
     await executeSp(buffer.toString(), databaseName: database);
+    // Some ODBC drivers do not surface a THROW raised after intermediate
+    // result sets. Never report success until the selected target confirms
+    // that every requested leave record is present.
+    await _assertLeaveRecordsInserted(list, database);
 
     return {
       'success': true,
       'message':
-          'Successfully added ${list.length} leave records in database $database',
+          'Successfully added ${list.length} leave records in $kServerName / $database',
     };
   }
 }

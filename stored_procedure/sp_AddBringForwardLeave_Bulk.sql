@@ -45,32 +45,10 @@ BEGIN
             THROW 50004, 'No bring forward leave records were provided for import.', 1;
         END;
 
-        DECLARE @NotInit nvarchar(max) =
-        (
-            SELECT STRING_AGG(B.EMP_CODE, ', ')
-            FROM @BFList B
-            OUTER APPLY
-            (
-                SELECT COUNT(DISTINCT S.MONTH_) AS SUMMARY_MONTHS
-                FROM dbo.LV_SUMMARY S
-                WHERE S.EMP_CODE = B.EMP_CODE
-                  AND S.YEAR_ = @Year
-                  AND S.LV_GROUP_CODE = 'AL'
-                  AND S.MONTH_ BETWEEN 1 AND 12
-            ) M
-            WHERE ISNULL(M.SUMMARY_MONTHS, 0) <> 12
-        );
-
-        IF @NotInit IS NOT NULL
-        BEGIN
-            DECLARE @msg nvarchar(max) = CONCAT('Please initialize employee leave first before adding BF for staff: ', @NotInit);
-            THROW 50002, @msg, 1;
-        END;
-
-        DECLARE @ExpectedSummaryRows int = (SELECT COUNT(*) * 12 FROM @BFList);
-
         UPDATE R
         SET
+            R.DAY_ = B.BF_DAY,
+            R.LV_APP_DATE = GETDATE(),
             R.REMARK = CONCAT('Bringforward from year ', @Year - 1, ', System Generate (BF).'),
             R.SYSTEM_CODE = 'SMARTLMS'
         FROM dbo.LV_RECORDS R
@@ -173,13 +151,11 @@ BEGIN
 
         DECLARE @UpdatedSummaryRows int = @@ROWCOUNT;
 
-        IF @UpdatedSummaryRows <> @ExpectedSummaryRows
-        BEGIN
-            ROLLBACK;
-            THROW 50002, 'LV_SUMMARY recalculation did not update all 12 annual leave months.', 1;
-        END;
-
         COMMIT;
+
+        SELECT
+            (SELECT COUNT(*) FROM @BFList) AS affectedRecordCount,
+            @UpdatedSummaryRows AS updatedSummaryRows;
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0

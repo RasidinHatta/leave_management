@@ -40,7 +40,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final username = _usernameCtrl.text.trim();
       final password = _passwordCtrl.text;
 
-      final dbName = kDatabaseName.isNotEmpty ? kDatabaseName : 'MYPAY_JSM';
+      final dbName = kDatabaseName;
+      if (dbName.isEmpty) {
+        throw DatabaseException(
+          'No main database is configured in config.ini.',
+        );
+      }
       final directDb = DirectDbClient();
       final response = await directDb.leaveLogin(username, password, dbName);
 
