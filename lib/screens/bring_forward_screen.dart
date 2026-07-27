@@ -277,6 +277,112 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     return val.toString().trim();
   }
 
+  String _formatDay(dynamic value) {
+    final day = double.tryParse(value.toString());
+    if (day == null) return value.toString();
+    return day == day.roundToDouble()
+        ? day.toInt().toString()
+        : day.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
+  }
+
+  Future<bool> _confirmExistingBringForward(
+    String database,
+    List<Map<String, dynamic>> existing,
+  ) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Existing BF Found'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'BF already exists for ${existing.length} employee(s) in $_selectedYear.',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Target Database: $database\nTarget Year: $_selectedYear',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Container(
+                    constraints: BoxConstraints(maxHeight: 220),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: existing.length,
+                      separatorBuilder: (_, _) => Divider(height: 1),
+                      itemBuilder: (_, index) {
+                        final row = existing[index];
+                        return Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  row['empCode'].toString(),
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${_formatDay(row['currentDay'])} → ${_formatDay(row['newDay'])} days',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Choose Replace & Continue to overwrite these BF values. '
+                    'Otherwise, cancel, remove the existing employee rows, and submit again.',
+                    style: TextStyle(
+                      color: AppColors.warning,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('Replace & Continue'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   // -------------------------------------------------------------------------
   // Submit
   // -------------------------------------------------------------------------
@@ -297,8 +403,36 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       return;
     }
 
+    final payload = validRows.map((row) => row.toMap()).toList();
+    List<Map<String, dynamic>> existing;
+
+    setState(() {
+      _isLoading = true;
+      _resultMessage = null;
+    });
+    try {
+      existing = await DirectDbClient().getExistingBringForwardLeave(
+        database: db,
+        year: _selectedYear,
+        list: payload,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSuccess = false;
+        _resultMessage = e.toString();
+      });
+      return;
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+
+    if (!mounted) return;
+
     // Confirmation dialog
-    final confirmed = await showDialog<bool>(
+    final confirmed = existing.isNotEmpty
+        ? await _confirmExistingBringForward(db, existing)
+        : await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Confirm Bring Forward'),
@@ -352,7 +486,8 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       final result = await DirectDbClient().addBringForwardLeave(
         database: db,
         year: _selectedYear,
-        list: validRows.map((r) => r.toMap()).toList(),
+        list: payload,
+        replaceExisting: existing.isNotEmpty,
       );
       setState(() {
         _isSuccess = true;

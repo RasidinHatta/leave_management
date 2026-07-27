@@ -36,6 +36,16 @@ class _SqlScript {
   _SqlScript({required this.name, required this.sql});
 }
 
+/// Starting chunk size for sp_AddLeaveRecords_Bulk round trips. Sending
+/// thousands of rows as one dynamically-built SQL script risks hitting
+/// ODBC/driver text-size limits, and the SP's LV_SUMMARY recalculation
+/// re-scans LV_RECORDS on every chunk, so later chunks in a large run get
+/// slower as earlier chunks accumulate. If a chunk's EXEC call fails
+/// outright it gets bisected into smaller chunks (down to
+/// _leaveTakenMinChunkSize) and retried instead of failing the whole thing.
+const int _leaveTakenChunkSize = 250;
+const int _leaveTakenMinChunkSize = 25;
+
 const List<String> _mainDatabaseStoredProcedureScripts = [
   'sp_AddBringForwardLeave.sql',
   'sp_AddBringForwardLeave_Bulk.sql',
@@ -160,46 +170,66 @@ class DirectDbClient {
     }
   }
 
-  Future<void> _assertLeaveRecordsInserted(
-    List<Map<String, dynamic>> list,
+  /// Submits [chunk] to sp_AddLeaveRecords_Bulk. The SP validates every
+  /// business rule (leave-code validity, duplicates, the 1-day-per-employee-
+  /// per-date cap) *before* inserting and throws a specific error if any
+  /// row fails or if its own inserted-row count doesn't match what was
+  /// requested — so a non-throwing call is trusted as a full success rather
+  /// than re-verified with a separate query (an earlier re-verification
+  /// step here produced false negatives: rows that were actually committed
+  /// still came back "missing" on immediate re-read).
+  ///
+  /// If the EXEC call does throw — typically one or two genuinely
+  /// conflicting rows (e.g. two entries for the same employee/date that
+  /// together exceed 1 day) poisoning the whole chunk — and the chunk is
+  /// bigger than [_leaveTakenMinChunkSize], it's bisected into two halves
+  /// and each retried independently, so the failure narrows down to just
+  /// the real offending row(s) with the SP's actual error message instead
+  /// of failing every row in the chunk. Appends failed rows (with a
+  /// 'reason') to [failures] and returns the number of rows inserted.
+  Future<int> _submitLeaveChunk(
+    List<Map<String, dynamic>> chunk,
     String database,
+    List<Map<String, dynamic>> failures,
   ) async {
-    final values = list
-        .map((item) {
-          final empCode = _quote(item['empCode'].toString());
-          final lvDate = _quote(item['lvDate'].toString());
-          final lvCode = _quote(item['lvCode'].toString());
-          return "('$empCode', CAST('$lvDate' AS date), '$lvCode')";
-        })
-        .join(',\n');
-
-    final missingRows = await query('''
-SELECT TOP 1
-  CAST(V.EMP_CODE AS VARCHAR(50)) AS empCode,
-  CONVERT(VARCHAR(10), V.LV_DATE, 120) AS lvDate,
-  CAST(V.LV_CODE AS VARCHAR(50)) AS lvCode
-FROM (VALUES
-$values
-) V(EMP_CODE, LV_DATE, LV_CODE)
-WHERE NOT EXISTS
-(
-  SELECT 1
-  FROM dbo.LV_RECORDS R
-  WHERE R.EMP_CODE = V.EMP_CODE
-    AND R.LV_DATE = V.LV_DATE
-    AND R.LV_CODE = V.LV_CODE
-    AND R.LV_EVENT_CODE = 'LEAVE'
-)
-''', databaseName: database);
-
-    if (missingRows.isNotEmpty) {
-      final row = missingRows.first;
-      throw DatabaseException(
-        'The leave procedure completed without inserting employee '
-        '${row['empCode']} on ${row['lvDate']} (${row['lvCode']}) into '
-        '$kServerName / $database. Check the stored procedure and LV_SUMMARY '
-        'setup in that database.',
+    final buffer = StringBuffer();
+    buffer.writeln('DECLARE @List dbo.LeaveImportList;');
+    for (final item in chunk) {
+      final empCode = _quote(item['empCode'].toString());
+      final lvDate = _quote(item['lvDate'].toString());
+      final lvCode = _quote(item['lvCode'].toString());
+      final remark = item['remark'] != null
+          ? "'${_quote(item['remark'].toString())}'"
+          : 'NULL';
+      buffer.writeln(
+        "INSERT INTO @List (EMP_CODE, LV_DATE, LV_CODE, REMARK) VALUES ('$empCode', '$lvDate', '$lvCode', $remark);",
       );
+    }
+    buffer.writeln('EXEC dbo.sp_AddLeaveRecords_Bulk @List = @List;');
+
+    try {
+      await executeSp(buffer.toString(), databaseName: database);
+      return chunk.length;
+    } catch (e) {
+      if (chunk.length > _leaveTakenMinChunkSize) {
+        final mid = chunk.length ~/ 2;
+        final first = await _submitLeaveChunk(
+          chunk.sublist(0, mid),
+          database,
+          failures,
+        );
+        final second = await _submitLeaveChunk(
+          chunk.sublist(mid),
+          database,
+          failures,
+        );
+        return first + second;
+      }
+      final reason = e is DatabaseException ? e.message : e.toString();
+      for (final item in chunk) {
+        failures.add({...item, 'reason': reason});
+      }
+      return 0;
     }
   }
 
@@ -248,8 +278,8 @@ WHERE NOT EXISTS
     }
   }
 
-  /// Throws "Staff X doesnt exist" if any emp code in [list] is missing from dbo.STAFF.
-  Future<void> _assertStaffExist(
+  /// Returns the emp codes in [list] that are missing from dbo.STAFF (empty if none).
+  Future<List<String>> _missingStaffCodes(
     List<Map<String, dynamic>> list,
     String database,
   ) async {
@@ -262,9 +292,17 @@ WHERE NOT EXISTS
       "WHERE NOT EXISTS (SELECT 1 FROM dbo.STAFF S WHERE S.EMP_CODE = V.EMP_CODE)",
       databaseName: database,
     );
+    return missing.map((r) => r['EMP_CODE'].toString()).toList();
+  }
+
+  /// Throws "Staff X doesnt exist" if any emp code in [list] is missing from dbo.STAFF.
+  Future<void> _assertStaffExist(
+    List<Map<String, dynamic>> list,
+    String database,
+  ) async {
+    final missing = await _missingStaffCodes(list, database);
     if (missing.isNotEmpty) {
-      final codes = missing.map((r) => r['EMP_CODE']).join(', ');
-      throw DatabaseException('Staff $codes doesnt exist');
+      throw DatabaseException('Staff ${missing.join(', ')} doesnt exist');
     }
   }
 
@@ -665,10 +703,23 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     required String database,
     required int year,
     required List<Map<String, dynamic>> list,
+    bool replaceExisting = false,
   }) async {
     if (list.isEmpty) throw DatabaseException('No records to add.');
 
     await _assertStaffExist(list, database);
+
+    final existing = await _getExistingBringForwardLeave(
+      database: database,
+      year: year,
+      list: list,
+    );
+    if (existing.isNotEmpty && !replaceExisting) {
+      final codes = existing.map((row) => row['empCode']).join(', ');
+      throw DatabaseException(
+        'Existing BF found for $codes in $year. Replacement confirmation is required.',
+      );
+    }
 
     final buffer = StringBuffer();
     buffer.writeln('DECLARE @List dbo.BringForwardLeaveList;');
@@ -693,36 +744,142 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     };
   }
 
-  Future<Map<String, dynamic>> addLeaveTaken({
+  Future<List<Map<String, dynamic>>> getExistingBringForwardLeave({
     required String database,
+    required int year,
     required List<Map<String, dynamic>> list,
   }) async {
-    if (list.isEmpty) throw DatabaseException('No records to add.');
+    if (list.isEmpty) return [];
+    await _assertStaffExist(list, database);
+    return _getExistingBringForwardLeave(
+      database: database,
+      year: year,
+      list: list,
+    );
+  }
 
-    final seenRows = <String>{};
-    for (final item in list) {
-      final empCode = item['empCode'].toString().trim().toUpperCase();
-      final lvDate = item['lvDate'].toString().trim();
-      final lvCode = item['lvCode'].toString().trim().toUpperCase();
-      final key = '$empCode|$lvDate|$lvCode';
-      if (!seenRows.add(key)) {
-        throw DatabaseException(
-          'Duplicate leave code found for employee $empCode on $lvDate.',
-        );
-      }
-    }
-
+  Future<List<Map<String, dynamic>>> _getExistingBringForwardLeave({
+    required String database,
+    required int year,
+    required List<Map<String, dynamic>> list,
+  }) {
     final values = list
         .map((item) {
           final empCode = _quote(item['empCode'].toString());
-          final lvDate = _quote(item['lvDate'].toString());
-          final lvCode = _quote(item['lvCode'].toString());
-          return "('$empCode', CAST('$lvDate' AS date), '$lvCode')";
+          final day = double.parse(item['day'].toString());
+          return "('$empCode', CAST($day AS decimal(18,2)))";
         })
         .join(',\n');
 
-    final duplicateRows = await query('''
-SELECT TOP 1
+    return query('''
+WITH Requested AS
+(
+  SELECT EMP_CODE, SUM(DAY_) AS NEW_DAY
+  FROM (VALUES
+$values
+  ) V(EMP_CODE, DAY_)
+  GROUP BY EMP_CODE
+)
+SELECT
+  CAST(Q.EMP_CODE AS VARCHAR(50)) AS empCode,
+  CAST(SUM(ISNULL(R.DAY_, 0)) AS DECIMAL(18,2)) AS currentDay,
+  CAST(Q.NEW_DAY AS DECIMAL(18,2)) AS newDay
+FROM Requested Q
+INNER JOIN dbo.LV_RECORDS R
+  ON R.EMP_CODE = Q.EMP_CODE
+ AND YEAR(R.LV_DATE) = $year
+ AND R.LV_CODE = 'BF(AL)'
+ AND R.LV_EVENT_CODE = 'BRINGFORWARD'
+GROUP BY Q.EMP_CODE, Q.NEW_DAY
+ORDER BY Q.EMP_CODE
+''', databaseName: database);
+  }
+
+  String _leaveRowKey(Map<String, dynamic> item) {
+    final empCode = item['empCode'].toString().trim().toUpperCase();
+    final lvDate = item['lvDate'].toString().trim();
+    final lvCode = item['lvCode'].toString().trim().toUpperCase();
+    return '$empCode|$lvDate|$lvCode';
+  }
+
+  /// Adds leave records, skipping rows that fail validation instead of
+  /// rejecting the whole batch. Skipped rows are returned under 'failures'
+  /// (each with a 'reason') so the caller can report them (e.g. export to
+  /// Excel) rather than surfacing one huge aggregate error message.
+  ///
+  /// [onProgress], if given, is called after each top-level chunk with
+  /// (chunkIndex, totalChunks, rowsDone, totalRows) so the caller can show
+  /// progress (e.g. "chunk 2 of 12").
+  Future<Map<String, dynamic>> addLeaveTaken({
+    required String database,
+    required List<Map<String, dynamic>> list,
+    void Function(int chunkIndex, int totalChunks, int rowsDone, int totalRows)?
+    onProgress,
+  }) async {
+    if (list.isEmpty) throw DatabaseException('No records to add.');
+
+    final failures = <Map<String, dynamic>>[];
+    var candidates = <Map<String, dynamic>>[];
+    final seenRows = <String>{};
+
+    for (final item in list) {
+      if (!seenRows.add(_leaveRowKey(item))) {
+        failures.add({...item, 'reason': 'Duplicate row in import file'});
+        continue;
+      }
+      candidates.add(item);
+    }
+
+    // Reject rows whose LV_CODE isn't a LEAVE-event type (e.g. BF is a
+    // bring-forward code, not something that can be submitted as leave taken)
+    // before hitting the server, so one bad code can't abort the whole batch.
+    if (candidates.isNotEmpty) {
+      final distinctCodes = candidates
+          .map((item) => item['lvCode'].toString().trim().toUpperCase())
+          .toSet();
+      final codeValues = distinctCodes
+          .map((c) => "('${_quote(c)}')")
+          .join(',');
+      final validCodeRows = await query(
+        "SELECT V.LV_CODE FROM (VALUES $codeValues) V(LV_CODE) "
+        "WHERE EXISTS (SELECT 1 FROM dbo.LV_TYPE T WHERE T.LV_CODE = V.LV_CODE AND T.LV_EVENT_CODE = 'LEAVE')",
+        databaseName: database,
+      );
+      final validCodes = validCodeRows
+          .map((r) => r['LV_CODE'].toString().trim().toUpperCase())
+          .toSet();
+      final invalidCodes = distinctCodes.difference(validCodes);
+      if (invalidCodes.isNotEmpty) {
+        final remaining = <Map<String, dynamic>>[];
+        for (final item in candidates) {
+          final lvCode = item['lvCode'].toString().trim().toUpperCase();
+          if (invalidCodes.contains(lvCode)) {
+            failures.add({
+              ...item,
+              'reason': lvCode == 'BF'
+                  ? 'BF is not leave taken'
+                  : 'Invalid leave code "$lvCode" is not configured as a LEAVE type',
+            });
+          } else {
+            remaining.add(item);
+          }
+        }
+        candidates = remaining;
+      }
+    }
+
+    if (candidates.isNotEmpty) {
+      final values = candidates
+          .map((item) {
+            final empCode = _quote(item['empCode'].toString());
+            final lvDate = _quote(item['lvDate'].toString());
+            final lvCode = _quote(item['lvCode'].toString());
+            return "('$empCode', CAST('$lvDate' AS date), '$lvCode')";
+          })
+          .join(',\n');
+
+      final duplicateRows = await query('''
+SELECT
   CAST(R.EMP_CODE AS VARCHAR(50)) AS empCode,
   CONVERT(VARCHAR(10), R.LV_DATE, 120) AS lvDate,
   CAST(R.LV_CODE AS VARCHAR(50)) AS lvCode
@@ -736,40 +893,88 @@ $values
 WHERE R.LV_EVENT_CODE = 'LEAVE'
 ''', databaseName: database);
 
-    if (duplicateRows.isNotEmpty) {
-      final row = duplicateRows.first;
-      throw DatabaseException(
-        'Leave record already exists for employee ${row['empCode']} on ${row['lvDate']} with leave code ${row['lvCode']}.',
-      );
+      final dupKeys = duplicateRows.map(_leaveRowKey).toSet();
+      if (dupKeys.isNotEmpty) {
+        final remaining = <Map<String, dynamic>>[];
+        for (final item in candidates) {
+          if (dupKeys.contains(_leaveRowKey(item))) {
+            failures.add({
+              ...item,
+              'reason': 'Leave record already exists for this employee/date/type',
+            });
+          } else {
+            remaining.add(item);
+          }
+        }
+        candidates = remaining;
+      }
     }
 
-    await _assertStaffExist(list, database);
-
-    final buffer = StringBuffer();
-    buffer.writeln('DECLARE @List dbo.LeaveImportList;');
-    for (final item in list) {
-      final empCode = _quote(item['empCode'].toString());
-      final lvDate = _quote(item['lvDate'].toString());
-      final lvCode = _quote(item['lvCode'].toString());
-      final remark = item['remark'] != null
-          ? "'${_quote(item['remark'].toString())}'"
-          : 'NULL';
-      buffer.writeln(
-        "INSERT INTO @List (EMP_CODE, LV_DATE, LV_CODE, REMARK) VALUES ('$empCode', '$lvDate', '$lvCode', $remark);",
-      );
+    if (candidates.isNotEmpty) {
+      final missingCodes = (await _missingStaffCodes(candidates, database))
+          .map((c) => c.trim().toUpperCase())
+          .toSet();
+      if (missingCodes.isNotEmpty) {
+        final remaining = <Map<String, dynamic>>[];
+        for (final item in candidates) {
+          final empCode = item['empCode'].toString().trim().toUpperCase();
+          if (missingCodes.contains(empCode)) {
+            failures.add({...item, 'reason': 'Employee code does not exist'});
+          } else {
+            remaining.add(item);
+          }
+        }
+        candidates = remaining;
+      }
     }
-    buffer.writeln('EXEC dbo.sp_AddLeaveRecords_Bulk @List = @List;');
 
-    await executeSp(buffer.toString(), databaseName: database);
-    // Some ODBC drivers do not surface a THROW raised after intermediate
-    // result sets. Never report success until the selected target confirms
-    // that every requested leave record is present.
-    await _assertLeaveRecordsInserted(list, database);
+    if (candidates.isEmpty) {
+      return {
+        'success': false,
+        'successCount': 0,
+        'failures': failures,
+        'message':
+            'No leave records were added — all ${failures.length} row(s) failed validation.',
+      };
+    }
+
+    // Submitting thousands of rows as one giant dynamically-built SQL script
+    // (one INSERT line per row) risks hitting ODBC/driver text-size limits,
+    // and the SP's LV_SUMMARY recalculation gets slower as LV_RECORDS grows
+    // during the run. Submit in fixed-size top-level chunks (so progress
+    // stays meaningful) and bisect any chunk whose EXEC call fails outright,
+    // so a slow/oversized chunk doesn't take down rows that would otherwise
+    // have succeeded.
+    var insertedCount = 0;
+    var rowsDone = 0;
+    final totalChunks = (candidates.length / _leaveTakenChunkSize).ceil();
+    var chunkIndex = 0;
+
+    for (
+      var start = 0;
+      start < candidates.length;
+      start += _leaveTakenChunkSize
+    ) {
+      chunkIndex++;
+      final end = (start + _leaveTakenChunkSize < candidates.length)
+          ? start + _leaveTakenChunkSize
+          : candidates.length;
+      final chunk = candidates.sublist(start, end);
+
+      insertedCount += await _submitLeaveChunk(chunk, database, failures);
+
+      rowsDone += chunk.length;
+      onProgress?.call(chunkIndex, totalChunks, rowsDone, candidates.length);
+    }
 
     return {
-      'success': true,
-      'message':
-          'Successfully added ${list.length} leave records in $kServerName / $database',
+      'success': insertedCount > 0,
+      'successCount': insertedCount,
+      'failures': failures,
+      'message': failures.isEmpty
+          ? 'Successfully added $insertedCount leave records in $kServerName / $database'
+          : 'Added $insertedCount of ${list.length} leave records in $kServerName / $database. '
+                '${failures.length} row(s) failed — see the exported failure report.',
     };
   }
 }

@@ -36,13 +36,16 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
 
     try {
       final targets = await _client.getTargets();
+      if (!mounted) return;
       setState(() => _targets = targets);
     } on DatabaseException catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.message);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -60,11 +63,13 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
         SnackBar(content: Text('Report config database setup complete.')),
       );
     } on DatabaseException catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.message);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      setState(() => _isSettingUp = false);
+      if (mounted) setState(() => _isSettingUp = false);
     }
   }
 
@@ -85,11 +90,13 @@ class _LeaveReportConfigScreenState extends State<LeaveReportConfigScreen> {
         ),
       );
     } on DatabaseException catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.message);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      setState(() => _isTesting = false);
+      if (mounted) setState(() => _isTesting = false);
     }
   }
 

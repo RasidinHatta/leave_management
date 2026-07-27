@@ -65,12 +65,43 @@ if (-not (Test-Path $ReleasesDir)) {
     New-Item -ItemType Directory -Path $ReleasesDir | Out-Null
 }
 
-if (Test-Path $ZipPath) {
-    Remove-Item -LiteralPath $ZipPath -Force
-}
-
 Write-Host "Creating release zip: $ZipPath" -ForegroundColor Cyan
-Compress-Archive -Path (Join-Path $ReleaseDir "*") -DestinationPath $ZipPath -Force
+
+# Writing directly to a .zip lets antivirus/indexing tools map the archive
+# before Compress-Archive has finished it. On Windows that can make Dispose()
+# fail with "a file with a user-mapped section open" and leave a corrupt zip.
+# Create an unrecognised temporary file first, validate it, then publish it.
+$TempZipPath = Join-Path $ReleasesDir (".{0}.{1}.tmp" -f $ZipName, [guid]::NewGuid().ToString("N"))
+
+try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $ReleaseDir,
+        $TempZipPath,
+        [System.IO.Compression.CompressionLevel]::Optimal,
+        $false
+    )
+
+    $Archive = [System.IO.Compression.ZipFile]::OpenRead($TempZipPath)
+    try {
+        if ($Archive.Entries.Count -eq 0) {
+            throw "The generated release archive is empty."
+        }
+    }
+    finally {
+        $Archive.Dispose()
+    }
+
+    if (Test-Path $ZipPath) {
+        Remove-Item -LiteralPath $ZipPath -Force
+    }
+    Move-Item -LiteralPath $TempZipPath -Destination $ZipPath
+}
+finally {
+    if (Test-Path $TempZipPath) {
+        Remove-Item -LiteralPath $TempZipPath -Force
+    }
+}
 
 $Zip = Get-Item $ZipPath
 $SizeMb = [math]::Round($Zip.Length / 1MB, 2)

@@ -6,11 +6,16 @@ Windows desktop application for managing leave operations directly against SQL S
 
 - User login with role-based menus.
 - Bring Forward Leave bulk entry and Excel import/export.
-- Leave Taken bulk entry and Excel import/export.
+- Leave Taken bulk entry and Excel import/export, with chunked submission and a
+  progress indicator for large imports, and a failed-rows Excel report for
+  anything that could not be imported (see [Leave Taken Bulk Import](#leave-taken-bulk-import)).
 - Main database connection check from `config.ini`.
 - Leave Report Config CRUD against the fixed `HR_REPORT_CONFIG` database.
 - Manage Users for creating and maintaining `USER` and `REPORT` accounts.
 - App appearance settings for font size, dark/light mode, and color palette.
+
+Sample import templates are in [`templates/`](templates/): `Bring_Forward_Template.xlsx`
+(sheet `BF`) and `Leave_Taken_Template.xlsx` (sheet `LV`).
 
 ## Role Access
 
@@ -228,6 +233,38 @@ build\windows\x64\runner\Release
 
 The release executable follows the `config.ini` in that Release folder.
 
+## Leave Taken Bulk Import
+
+Leave Taken import behaves differently from Bring Forward: instead of
+rejecting the whole batch when some rows are invalid, it validates each row
+independently and only submits the rows that pass.
+
+- Rows are skipped individually, not batch-wide, for: duplicate rows within
+  the import file, rows that already exist in the database, employee codes
+  not found in `dbo.STAFF`, and leave codes that are not configured as a
+  `LEAVE`-event type in `dbo.LV_TYPE` (for example `BF`, which is a
+  bring-forward code, not a leave-taken code).
+- Large imports (thousands of rows) are submitted to
+  `sp_AddLeaveRecords_Bulk` in chunks of 250 rows instead of one large SQL
+  script, with a live "Processing chunk X of Y" indicator. If a chunk fails
+  outright, it is automatically split in half and retried, which narrows a
+  failure down to the specific row(s) causing it (for example two entries
+  for the same employee and date that together exceed one day of leave)
+  instead of failing the entire chunk.
+- Any row that could not be imported is written to an Excel file next to the
+  failed-rows layout below, saved under `log\` (next to `leave_management.exe`
+  in a release build, or the project folder during `flutter run`), named
+  `Leave_Import_Failed_<timestamp>.xlsx`. It uses the same columns as the
+  Leave Taken import template plus a trailing `failed_reason` column
+  explaining why each row was skipped.
+- Rows that were successfully submitted are removed from the on-screen table;
+  rows that failed (or were never valid) remain so they can be corrected and
+  resubmitted.
+
+Bring Forward has not changed: it still validates the whole batch up front
+and rejects it entirely if any employee code is missing (see
+[Frequently Asked Questions](#frequently-asked-questions)).
+
 ## First Run Checklist
 
 1. Install `ODBC Driver 17 for SQL Server`.
@@ -242,6 +279,35 @@ The release executable follows the `config.ini` in that Release folder.
 10. Open Manage Users and create `USER` or `REPORT` users as needed.
 
 ## Changelog
+
+### Version 1.0.3
+
+- Build `1.0.3+10`: Leave Taken bulk import no longer rejects the entire
+  batch when some rows are invalid. Duplicate rows, rows that already exist,
+  missing employee codes, and invalid leave codes (e.g. `BF`) are now
+  skipped per-row, and the valid rows are still submitted. See
+  [Leave Taken Bulk Import](#leave-taken-bulk-import).
+- Added an automatic failed-rows Excel export for Leave Taken import, saved
+  under `log\` with the same columns as the import template plus a
+  `failed_reason` column, so large failures no longer have to be read from
+  a single on-screen message.
+- Large Leave Taken imports are now submitted in chunks with automatic
+  bisect-and-retry on chunk failure and a live per-chunk progress
+  indicator, instead of one large SQL script per submission. This fixes
+  large imports (multiple thousands of rows) silently failing outright.
+- Fixed a bug where a small number of genuinely conflicting rows (for
+  example two leave entries for the same employee and date that together
+  exceed one day) could cause an internal post-insert check to falsely
+  report hundreds of otherwise-valid, already-inserted rows as failed. The
+  app now reports only the rows that actually failed, with the real reason.
+- Fixed a crash (`setState() called after dispose()`) in Leave Report
+  Config when the screen is closed, or the app is hot-restarted, while a
+  database call is still in progress.
+- Fixed a UI overflow error in Leave Taken caused by a very long inline
+  error message (for example listing many invalid employee codes at once);
+  long failure detail now goes to the exported Excel report instead.
+- Added `templates/` with sample `Bring_Forward_Template.xlsx` and
+  `Leave_Taken_Template.xlsx` import files.
 
 ### Version 1.0.2
 
@@ -262,6 +328,67 @@ The release executable follows the `config.ini` in that Release folder.
 - Report target stored procedures now encrypt email passwords correctly for the `VARBINARY(MAX)` password column.
 - Added terminal installer scripts, `setup.bat` and `setup.ps1`, with install-location prompt and optional desktop shortcut creation.
 - Release zip script now includes installer scripts and stops if the Windows build fails.
+
+## Frequently Asked Questions
+
+### What happens if an employee code does not exist or contains a typo?
+
+Both Bring Forward (BF) and Leave Taken validate employee codes against `dbo.STAFF` when the batch is submitted, but they respond differently:
+
+- **Bring Forward** displays `Staff <code> doesnt exist` and rejects the entire batch. No rows are inserted, including rows with valid employee codes.
+- **Leave Taken** skips only the rows with the missing employee code(s) and still submits the rest of the batch. The skipped rows appear in the failed-rows Excel export (see [Leave Taken Bulk Import](#leave-taken-bulk-import)) with reason `Employee code does not exist`.
+
+### What happens when several employee codes in a batch do not exist?
+
+For Bring Forward, the error lists all missing codes in one message, for example:
+
+```text
+Staff E099, E088, E077 doesnt exist
+```
+
+and the whole BF batch is rejected. Correct or remove the invalid rows, then submit the complete batch again.
+
+For Leave Taken, each affected row is listed individually in the failed-rows Excel export instead, and every other valid row is still imported.
+
+### Can BF or leave be inserted for resigned staff?
+
+The application checks only whether the employee code exists in `dbo.STAFF`. It does not check active status, resignation date, or termination status. A resigned employee who remains in `dbo.STAFF` can therefore receive BF and leave records. If the employee has been removed from `dbo.STAFF`, the employee is treated as nonexistent: the BF batch is rejected, or the Leave Taken row is skipped and reported in the failed-rows export.
+
+### Does submitting BF again add to or replace the existing value?
+
+When submitted BF contains an employee who already has BF for the target year, the application shows the existing and requested values. Choose `Replace & Continue` to replace the existing value, or cancel, remove that employee's row, and submit again. For example, if the stored BF is `10` and the confirmed replacement is `20`, the BF becomes `20`, not `30`. The corresponding `LV_SUMMARY` values are recalculated using `20`.
+
+### What happens if the same employee appears more than once in one BF batch?
+
+The BF days from those rows are summed before saving. For example, two rows containing `5` and `3` days for the same employee and year produce a BF value of `8`.
+
+### Can an incorrect BF value or year be corrected after submission?
+
+An incorrect BF value can be corrected by submitting the correct value again for the same employee and year. If the wrong target year was selected, submitting for the correct year does not remove the record from the wrong year. The incorrect year's `LV_RECORDS` entry must be corrected or deleted directly in the database because the application has no BF undo/delete function.
+
+### Does submitting Leave Taken again replace an existing record?
+
+No. Leave Taken does not overwrite an existing record with the same employee, date, and leave code. That row is skipped as a duplicate (reason `Leave record already exists for this employee/date/type` in the failed-rows export) while the rest of the batch is still submitted.
+
+### Can leave with a wrong date or leave type be corrected in the application?
+
+The application currently has no leave undo, edit, or delete function. The incorrect `LV_RECORDS` entry must first be corrected or deleted directly in the database, after which the correct leave can be submitted. Leave duration is obtained from `dbo.LV_TYPE`; users do not enter the number of leave days directly.
+
+### Can two different leave codes be recorded on the same date?
+
+They are allowed only when their combined duration does not exceed one day and their half-day portions do not conflict. The same leave code cannot be submitted twice for the same employee and date. A row that violates this is skipped and reported in the failed-rows export rather than rejecting the whole batch.
+
+### Can a leave code that isn't a "leave taken" type (for example `BF`) be imported through Leave Taken?
+
+No. Leave Taken only accepts leave codes configured in `dbo.LV_TYPE` with `LV_EVENT_CODE = 'LEAVE'`. Rows using any other code (for example `BF`, which is a bring-forward code) are skipped with reason `BF is not leave taken` (or a generic invalid-leave-code reason for other codes) in the failed-rows export.
+
+### What should I do if release ZIP creation reports a user-mapped section error?
+
+Use the latest `tool\zip_windows_release.ps1`, which creates and validates a temporary archive before publishing the final ZIP. Do not distribute a ZIP from a failed run. Close any PowerShell session or File Explorer ZIP preview holding the old archive, open a new terminal, and run:
+
+```powershell
+.\tool\zip_windows_release.ps1
+```
 
 ## Troubleshooting
 

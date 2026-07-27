@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:excel/excel.dart' hide Border;
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import 'package:leave_management/core/db_client.dart';
@@ -82,6 +83,7 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
   String? _resultMessage;
   bool _isSuccess = false;
   String? _importSummary;
+  String? _progressText;
 
   @override
   void initState() {
@@ -387,6 +389,87 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     }
   }
 
+  /// Resolves the project's "log" folder the same way config.ini is
+  /// resolved: relative to the working directory in debug mode (so it
+  /// lands next to lib/, stored_procedure/, etc. during `flutter run`),
+  /// or next to the executable for a packaged release build.
+  String _logDirectoryPath() {
+    if (kDebugMode) {
+      final devLog = Directory(
+        '${Directory.current.path}${Platform.pathSeparator}log',
+      );
+      return devLog.path;
+    }
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    return '$exeDir${Platform.pathSeparator}log';
+  }
+
+  String _failureRowKey(Map<String, dynamic> item) {
+    final empCode = (item['empCode'] ?? '').toString().trim().toUpperCase();
+    final lvDate = (item['lvDate'] ?? '').toString().trim();
+    final lvCode = (item['lvCode'] ?? '').toString().trim().toUpperCase();
+    return '$empCode|$lvDate|$lvCode';
+  }
+
+  /// Writes rows that failed validation to an Excel file under Desktop/Log,
+  /// using the same column layout as the Import Leave template plus a
+  /// trailing "failed_reason" column, and returns the saved file path.
+  Future<String> _exportFailuresToDesktop(
+    List<Map<String, dynamic>> failures,
+  ) async {
+    var excel = Excel.createExcel();
+    final defaultSheet = excel.getDefaultSheet();
+    if (defaultSheet != null) {
+      excel.rename(defaultSheet, 'LV');
+    }
+    final sheet = excel['LV'];
+
+    sheet.appendRow([
+      TextCellValue('Employee Code'),
+      TextCellValue('Employee Name'),
+      TextCellValue('Leave Date (d/m/yyyy)'),
+      TextCellValue('Leave Type'),
+      TextCellValue('Remark'),
+      TextCellValue('failed_reason'),
+    ]);
+
+    for (final item in failures) {
+      final empCode = (item['empCode'] ?? '').toString();
+      final date = (item['lvDate'] ?? '').toString();
+      final code = (item['lvCode'] ?? '').toString();
+      final remark = (item['remark'] ?? '').toString();
+      final reason = (item['reason'] ?? 'Unknown error').toString();
+      sheet.appendRow([
+        TextCellValue(empCode),
+        TextCellValue(''), // Employee Name (not tracked on import)
+        TextCellValue(_formatToExcelDate(date)),
+        TextCellValue(code),
+        TextCellValue(remark),
+        TextCellValue(reason),
+      ]);
+    }
+
+    final fileBytes = excel.save();
+    if (fileBytes == null) {
+      throw Exception('Failed to generate the failed-rows Excel file.');
+    }
+
+    final logDir = Directory(_logDirectoryPath());
+    if (!await logDir.exists()) {
+      await logDir.create(recursive: true);
+    }
+
+    final now = DateTime.now();
+    final stamp =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
+        '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    final outputPath =
+        '${logDir.path}${Platform.pathSeparator}Leave_Import_Failed_$stamp.xlsx';
+
+    await File(outputPath).writeAsBytes(fileBytes);
+    return outputPath;
+  }
+
   String _cellStr(List<Data?> row, int index) {
     if (index >= row.length) return '';
     final cell = row[index];
@@ -427,24 +510,62 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
     setState(() {
       _isLoading = true;
       _resultMessage = null;
+      _progressText = null;
     });
 
     try {
       final result = await _dbClient.addLeaveTaken(
         database: db,
         list: validRows.map((r) => r.toMap()).toList(),
+        onProgress: (chunkIndex, totalChunks, rowsDone, totalRows) {
+          if (!mounted) return;
+          setState(() {
+            _progressText =
+                'Processing chunk $chunkIndex of $totalChunks '
+                '($rowsDone/$totalRows rows)...';
+          });
+        },
       );
-      setState(() {
-        _isSuccess = true;
-        _resultMessage =
-            result['message'] as String? ?? 'Leave records added successfully!';
 
-        // Clear all table rows and restart with one blank row
-        for (final row in _rows) {
-          row.dispose();
+      final failures =
+          (result['failures'] as List?)?.cast<Map<String, dynamic>>() ??
+          const [];
+      final successCount = result['successCount'] as int? ?? 0;
+
+      String? failedFilePath;
+      if (failures.isNotEmpty) {
+        try {
+          failedFilePath = await _exportFailuresToDesktop(failures);
+        } catch (e) {
+          _showSnack('Could not save failed-rows report: $e', isError: true);
         }
-        _rows.clear();
-        _rows.add(_LeaveRow());
+      }
+
+      setState(() {
+        _isSuccess = successCount > 0;
+        final baseMessage =
+            result['message'] as String? ?? 'Leave records added successfully!';
+        _resultMessage = failedFilePath != null
+            ? '$baseMessage\nFailed rows saved to: $failedFilePath'
+            : baseMessage;
+
+        // Remove only the rows that were successfully submitted; keep
+        // untouched/failed rows in the table so the user can review or fix them.
+        final failedKeys = failures.map(_failureRowKey).toSet();
+        final remaining = <_LeaveRow>[];
+        for (final row in _rows) {
+          final isSubmittedRow =
+              row.isValid && !failedKeys.contains(_failureRowKey(row.toMap()));
+          if (isSubmittedRow) {
+            row.dispose();
+          } else {
+            remaining.add(row);
+          }
+        }
+        _rows
+          ..clear()
+          ..addAll(remaining);
+        if (_rows.isEmpty) _rows.add(_LeaveRow());
         _importSummary = null;
       });
     } on DatabaseException catch (e) {
@@ -453,7 +574,10 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
         _resultMessage = e.message;
       });
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _progressText = null;
+      });
     }
   }
 
@@ -486,6 +610,10 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
             if (_importSummary != null) ...[
               SizedBox(height: 10),
               _buildImportBanner(),
+            ],
+            if (_isLoading && _progressText != null) ...[
+              SizedBox(height: 10),
+              _buildProgressBanner(),
             ],
             SizedBox(height: 12),
             if (_resultMessage != null) ...[
@@ -702,6 +830,33 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           label: Text(_isLoading ? 'Processing…' : 'Run Leave Taken'),
         ),
       ],
+    );
+  }
+
+  Widget _buildProgressBanner() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.accentPanel,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _progressText!,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
