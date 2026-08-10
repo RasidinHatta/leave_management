@@ -242,10 +242,10 @@ class DirectDbClient {
         .map((item) {
           final empCode = _quote(item['empCode'].toString());
           final bfDay = item['bfDay'] == null
-              ? 'NULL'
+              ? 'CAST(NULL AS decimal(18,2))'
               : 'CAST(${double.parse(item['bfDay'].toString())} AS decimal(18,2))';
           final crDay = item['crDay'] == null
-              ? 'NULL'
+              ? 'CAST(NULL AS decimal(18,2))'
               : 'CAST(${double.parse(item['crDay'].toString())} AS decimal(18,2))';
           return "('$empCode', $bfDay, $crDay)";
         })
@@ -789,10 +789,10 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
         .map((item) {
           final empCode = _quote(item['empCode'].toString());
           final bfDay = item['bfDay'] == null
-              ? 'NULL'
+              ? 'CAST(NULL AS decimal(18,2))'
               : 'CAST(${double.parse(item['bfDay'].toString())} AS decimal(18,2))';
           final crDay = item['crDay'] == null
-              ? 'NULL'
+              ? 'CAST(NULL AS decimal(18,2))'
               : 'CAST(${double.parse(item['crDay'].toString())} AS decimal(18,2))';
           return "('$empCode', $bfDay, $crDay)";
         })

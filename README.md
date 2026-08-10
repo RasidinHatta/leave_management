@@ -292,6 +292,9 @@ required per employee.
 
 ### Version 1.0.5
 
+- Fixed BF-only and CR-only Excel imports failing with SQL Server error 8117
+  (`Operand data type NULL is invalid for sum operator`) when the opposite
+  leave-days column is blank for every imported row.
 - Build `1.0.5+12`: Leave Taken now detects an existing record by employee,
   calendar date, and leave code even when the stored `LV_DATE` contains a time
   component or the record has different event metadata. Existing rows are
