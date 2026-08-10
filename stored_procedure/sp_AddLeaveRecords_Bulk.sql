@@ -59,7 +59,7 @@ BEGIN
             FROM @List L
             LEFT JOIN dbo.[LV_TYPE] T
                 ON T.LV_CODE = L.LV_CODE
-               AND T.LV_EVENT_CODE = 'LEAVE'
+               AND (T.LV_EVENT_CODE = 'LEAVE' OR T.LV_CODE IN ('PH', 'OFF', 'RL', 'REST'))
             WHERE T.LV_CODE IS NULL
         )
         BEGIN
@@ -94,9 +94,8 @@ BEGIN
             FROM @List L
             INNER JOIN dbo.[LV_RECORDS] R
                 ON R.EMP_CODE = L.EMP_CODE
-               AND R.LV_DATE = L.LV_DATE
+               AND CAST(R.LV_DATE AS date) = L.LV_DATE
                AND R.LV_CODE = L.LV_CODE
-               AND R.LV_EVENT_CODE = 'LEAVE'
         )
         BEGIN
             THROW 50003, 'Same leave code already exists for this employee on the same date.', 1;
@@ -213,7 +212,8 @@ BEGIN
             EMP_CODE varchar(50),
             LV_DATE  date,
             LV_CODE  varchar(50),
-            DAY_     decimal(18,2)
+            DAY_     decimal(18,2),
+            LV_EVENT_CODE varchar(50)
         );
 
         ------------------------------------------------------------
@@ -238,7 +238,8 @@ BEGIN
             inserted.EMP_CODE,
             inserted.LV_DATE,
             inserted.LV_CODE,
-            inserted.DAY_
+            inserted.DAY_,
+            inserted.LV_EVENT_CODE
         INTO @InsertedLeave
         SELECT
             L.EMP_CODE,
@@ -247,13 +248,13 @@ BEGIN
             ISNULL(T.DAY_, 1),
             GETDATE(),
             L.REMARK,
-            'LEAVE',
+            T.LV_EVENT_CODE,
             T.LV_DAY_PORTION_CODE,
             'ELEAVE'
         FROM @List L
         INNER JOIN dbo.[LV_TYPE] T
             ON T.LV_CODE = L.LV_CODE
-           AND T.LV_EVENT_CODE = 'LEAVE';
+           AND (T.LV_EVENT_CODE = 'LEAVE' OR T.LV_CODE IN ('PH', 'OFF', 'RL', 'REST'));
 
         DECLARE @InsertedCount int = (SELECT COUNT(*) FROM @InsertedLeave);
 
@@ -286,6 +287,7 @@ BEGIN
                     ELSE LV_CODE
                 END AS LV_GROUP_CODE
             FROM @InsertedLeave
+            WHERE LV_EVENT_CODE = 'LEAVE'
             GROUP BY
                 EMP_CODE,
                 YEAR(LV_DATE),

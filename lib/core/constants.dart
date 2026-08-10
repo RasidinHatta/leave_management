@@ -10,6 +10,7 @@ String kDbPassword = 'sql9903*';
 String kServerName = '';
 String kDatabaseName = '';
 String kDriverName = 'ODBC Driver 17 for SQL Server';
+bool kAdminMenuEnabled = false;
 
 String kReportDatabaseName = 'HR_REPORT_CONFIG';
 String kReportServerName = 'v1soho.com,1500';
@@ -62,6 +63,7 @@ Future<void> loadConfig() async {
   final server = config.get(section, 'Server')?.trim() ?? '';
   final database = config.get(section, 'Database')?.trim() ?? '';
   final driver = config.get(section, 'Driver')?.trim();
+  final admin = config.get(section, 'Admin')?.trim().toLowerCase() ?? '';
   final reportServer = config.get('ReportConfig', 'Server')?.trim();
 
   if (server.isEmpty || database.isEmpty) {
@@ -75,6 +77,7 @@ Future<void> loadConfig() async {
   if (driver != null && driver.isNotEmpty) {
     kDriverName = driver;
   }
+  kAdminMenuEnabled = const {'1', 'true', 'yes', 'on'}.contains(admin);
 
   kReportServerName = reportServer != null && reportServer.isNotEmpty
       ? reportServer

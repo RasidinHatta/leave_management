@@ -84,6 +84,15 @@ def set_table_geometry(table, widths):
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
 
+def set_repeat_table_header(row):
+    tr_pr = row._tr.get_or_add_trPr()
+    tbl_header = tr_pr.find(qn("w:tblHeader"))
+    if tbl_header is None:
+        tbl_header = OxmlElement("w:tblHeader")
+        tr_pr.append(tbl_header)
+    tbl_header.set(qn("w:val"), "true")
+
+
 def set_borders(table, color=BORDER):
     tbl_pr = table._tbl.tblPr
     borders = tbl_pr.find(qn("w:tblBorders"))
@@ -122,12 +131,13 @@ def add_title(doc):
     r = p.add_run("User Manual and Operating Guide")
     style_run(r, color=MUTED, size=12)
 
-    table = doc.add_table(rows=3, cols=2)
+    table = doc.add_table(rows=4, cols=2)
     table.style = "Table Grid"
     set_table_geometry(table, [2200, 7160])
     set_borders(table)
     rows = [
         ("Application", "Windows desktop leave administration tool"),
+        ("Release", "Version 1.0.5 (build 12)"),
         ("Primary users", "ADMIN, USER, and REPORT roles"),
         ("Configuration", "SQL Server connections are read from config.ini"),
     ]
@@ -188,6 +198,7 @@ def add_role_table(doc):
     set_table_geometry(table, [1800, 3480, 4080])
     set_borders(table)
     headers = ["Role", "Visible menus", "Purpose"]
+    set_repeat_table_header(table.rows[0])
     for idx, header in enumerate(headers):
         cell = table.rows[0].cells[idx]
         set_cell_shading(cell, FILL)
@@ -195,9 +206,9 @@ def add_role_table(doc):
         r = p.add_run(header)
         style_run(r, bold=True, color=DARK_BLUE)
     rows = [
-        ("ADMIN", "Bring Forward, Leave Taken, DB Targets, Leave Report Config, Manage Users", "Full application administration."),
-        ("USER", "Bring Forward, Leave Taken", "Daily leave data entry and upload work."),
-        ("REPORT", "Leave Report Config", "Maintain daily report targets only."),
+        ("ADMIN", "Bring Forward, Leave Taken, DB Targets. Report Config and Manage Users require Admin=1.", "Full application administration."),
+        ("USER", "Bring Forward, Leave Taken. Report Config and Manage Users require Admin=1.", "Daily leave data entry and upload work."),
+        ("REPORT", "Leave Report Config only when Admin=1.", "Maintain daily report targets when enabled."),
     ]
     for role, menus, purpose in rows:
         row = table.add_row().cells
@@ -214,6 +225,7 @@ def add_config_table(doc):
     set_table_geometry(table, [2100, 2500, 4760])
     set_borders(table)
     headers = ["Section", "Key", "Description"]
+    set_repeat_table_header(table.rows[0])
     for idx, header in enumerate(headers):
         cell = table.rows[0].cells[idx]
         set_cell_shading(cell, FILL)
@@ -223,6 +235,7 @@ def add_config_table(doc):
         ("DatabaseConfig", "Server", "Main SQL Server instance for leave operations."),
         ("DatabaseConfig", "Database", "Main application database, for example MYPAY_LCO."),
         ("DatabaseConfig", "Driver", "ODBC driver name, usually ODBC Driver 17 for SQL Server."),
+        ("DatabaseConfig", "Admin", "Set to 1 to show Leave Report Config and Manage Users in the sidebar."),
         ("ReportConfig", "Server", "Optional override for HR_REPORT_CONFIG. Defaults to v1soho.com,1500."),
     ]
     for values in rows:
@@ -280,7 +293,7 @@ def build():
     add_heading(doc, "1. Overview", 1)
     add_body(
         doc,
-        "HR Leave Management is a Windows desktop application for managing carry-forward leave, leave taken entries, report target configuration, and user access. It connects directly to SQL Server using the settings in config.ini.",
+        "HR Leave Management is a Windows desktop application for managing carry-forward leave, credit leave, leave taken entries, report target configuration, and user access. It connects directly to SQL Server using the settings in config.ini.",
     )
     add_note(
         doc,
@@ -289,6 +302,10 @@ def build():
 
     add_heading(doc, "2. User Roles and Menu Access", 1)
     add_role_table(doc)
+    add_note(
+        doc,
+        "Admin=1 under DatabaseConfig is required to show Leave Report Config and Manage Users in the sidebar, including for an ADMIN login. DB Targets remains controlled by the ADMIN role. Database authorization checks still apply to Manage Users operations.",
+    )
 
     add_heading(doc, "3. Sign In and General Navigation", 1)
     add_steps(
@@ -302,14 +319,14 @@ def build():
         ],
     )
 
-    add_heading(doc, "4. Bring Forward Leave", 1)
-    add_body(doc, "Use Bring Forward to add carry-forward annual leave records.")
+    add_heading(doc, "4. Bring Forward and Credit Leave", 1)
+    add_body(doc, "Use Bring Forward to add carry-forward and credit annual leave records. BF values are stored as BF(AL), while credit values are stored as CR(AL).")
     add_steps(
         doc,
         [
             "Confirm the displayed database is correct.",
-            "Select Target Year and Target Month.",
-            "Enter Employee Code and Days Leave manually, or use Import Excel.",
+            "Select the Target Year.",
+            "Enter Employee Code and at least one of BF Days or CR Days manually, or use Import Excel.",
             "Check the valid row count before submitting.",
             "Click Run Bring Forward to execute the database operation.",
         ],
@@ -318,6 +335,8 @@ def build():
         doc,
         [
             "Export Excel creates a template for bulk entry.",
+            "The BF Excel sheet uses column C for Bring Forward Days and column D for Credit Leave Days.",
+            "Leaving BF or CR blank preserves that existing value when replacing the other value.",
             "Imported rows are validated before submission.",
             "Invalid rows are highlighted and must be corrected before running.",
         ],
@@ -330,10 +349,14 @@ def build():
         [
             "Confirm the displayed database is correct.",
             "Enter Employee Code and Leave Date in YYYY-MM-DD format.",
-            "Choose the Leave Type loaded from dbo.LV_TYPE.",
+            "Choose the Leave Type loaded from dbo.LV_TYPE. PH, OFF, RL, and REST are also available.",
             "Enter an optional remark.",
             "Click Run Leave Taken to write valid rows to SQL Server.",
         ],
+    )
+    add_note(
+        doc,
+        "If the same employee, calendar date, and leave code already exists in LV_RECORDS, that row is skipped and written to Leave_Import_Failed_<timestamp>.xlsx under the log folder. Other valid rows continue processing.",
     )
 
     add_heading(doc, "6. DB Targets", 1)
@@ -345,7 +368,7 @@ def build():
     add_heading(doc, "7. Leave Report Config", 1)
     add_body(
         doc,
-        "Leave Report Config is available to ADMIN and REPORT users. It connects to the fixed database HR_REPORT_CONFIG on v1soho.com,1500 by default. To use another report server, add a ReportConfig section with a Server value in config.ini. The report driver follows DatabaseConfig Driver.",
+        "Leave Report Config is shown only when DatabaseConfig Admin=1. It connects to the fixed database HR_REPORT_CONFIG on v1soho.com,1500 by default. To use another report server, add a ReportConfig section with a Server value in config.ini. The report driver follows DatabaseConfig Driver.",
     )
     add_steps(
         doc,
@@ -363,7 +386,7 @@ def build():
     )
 
     add_heading(doc, "8. Manage Users", 1)
-    add_body(doc, "Manage Users is available to ADMIN users only.")
+    add_body(doc, "Manage Users is shown only when DatabaseConfig Admin=1. User-management actions still require database ADMIN authorization.")
     add_bullets(
         doc,
         [
@@ -383,7 +406,7 @@ def build():
         [
             "Connection failure: confirm Server, Database, and Driver in config.ini and verify the ODBC driver is installed.",
             "Memory allocation failure while reading data: retry after updating to the latest release build; the app uses bounded SQL casts for known ODBC buffer issues.",
-            "Leave types do not load: verify dbo.LV_TYPE exists and contains rows where LV_EVENT_CODE equals LEAVE.",
+            "Leave types do not load: verify dbo.LV_TYPE exists and contains the required LEAVE types or operational PH, OFF, RL, and REST codes.",
             "Report targets table missing: open Leave Report Config and click Setup DB.",
             "Email sending fails: verify SMTP server, port, user, password, TLS setting, and provider app-password requirements.",
         ],

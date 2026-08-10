@@ -241,8 +241,13 @@ class DirectDbClient {
     final values = list
         .map((item) {
           final empCode = _quote(item['empCode'].toString());
-          final day = double.parse(item['day'].toString());
-          return "('$empCode', CAST($day AS decimal(18,2)))";
+          final bfDay = item['bfDay'] == null
+              ? 'NULL'
+              : 'CAST(${double.parse(item['bfDay'].toString())} AS decimal(18,2))';
+          final crDay = item['crDay'] == null
+              ? 'NULL'
+              : 'CAST(${double.parse(item['crDay'].toString())} AS decimal(18,2))';
+          return "('$empCode', $bfDay, $crDay)";
         })
         .join(',\n');
 
@@ -251,10 +256,10 @@ SELECT TOP 1
   CAST(V.EMP_CODE AS VARCHAR(50)) AS empCode
 FROM
 (
-  SELECT EMP_CODE, SUM(DAY_) AS DAY_
+  SELECT EMP_CODE, SUM(BF_DAY) AS BF_DAY, SUM(CR_DAY) AS CR_DAY
   FROM (VALUES
 $values
-  ) I(EMP_CODE, DAY_)
+  ) I(EMP_CODE, BF_DAY, CR_DAY)
   GROUP BY EMP_CODE
 ) V
 WHERE NOT EXISTS
@@ -263,9 +268,20 @@ WHERE NOT EXISTS
   FROM dbo.LV_RECORDS R
   WHERE R.EMP_CODE = V.EMP_CODE
     AND YEAR(R.LV_DATE) = $year
-    AND R.LV_CODE = 'BF(AL)'
-    AND R.LV_EVENT_CODE = 'BRINGFORWARD'
-    AND R.DAY_ = V.DAY_
+    AND R.LV_CODE = CASE WHEN V.BF_DAY IS NOT NULL THEN 'BF(AL)' ELSE 'CR(AL)' END
+    AND R.DAY_ = COALESCE(V.BF_DAY, V.CR_DAY)
+)
+OR
+(
+  V.BF_DAY IS NOT NULL AND V.CR_DAY IS NOT NULL AND NOT EXISTS
+  (
+    SELECT 1
+    FROM dbo.LV_RECORDS R
+    WHERE R.EMP_CODE = V.EMP_CODE
+      AND YEAR(R.LV_DATE) = $year
+      AND R.LV_CODE = 'CR(AL)'
+      AND R.DAY_ = V.CR_DAY
+  )
 )
 ''', databaseName: database);
 
@@ -676,6 +692,7 @@ SELECT
   CAST(LV_DAY_PORTION_CODE AS VARCHAR(50)) AS lvDayPortionCode
 FROM dbo.LV_TYPE
 WHERE CAST(LV_EVENT_CODE AS VARCHAR(50)) = 'LEAVE'
+   OR CAST(LV_CODE AS VARCHAR(50)) IN ('PH', 'OFF', 'RL', 'REST')
 ORDER BY CAST(LV_CODE AS VARCHAR(50))
 ''', databaseName: databaseName);
   }
@@ -725,9 +742,14 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     buffer.writeln('DECLARE @List dbo.BringForwardLeaveList;');
     for (final item in list) {
       final empCode = _quote(item['empCode'].toString());
-      final day = double.parse(item['day'].toString());
+      final bfDay = item['bfDay'] == null
+          ? 'NULL'
+          : double.parse(item['bfDay'].toString()).toString();
+      final crDay = item['crDay'] == null
+          ? 'NULL'
+          : double.parse(item['crDay'].toString()).toString();
       buffer.writeln(
-        "INSERT INTO @List (EMP_CODE, DAY_) VALUES ('$empCode', $day);",
+        "INSERT INTO @List (EMP_CODE, BF_DAY, CR_DAY) VALUES ('$empCode', $bfDay, $crDay);",
       );
     }
     buffer.writeln(
@@ -740,7 +762,7 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     return {
       'success': true,
       'message':
-          'Successfully added ${list.length} bring forward leave records in $kServerName / $database',
+          'Successfully added ${list.length} bring forward/credit leave records in $kServerName / $database',
     };
   }
 
@@ -766,31 +788,38 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     final values = list
         .map((item) {
           final empCode = _quote(item['empCode'].toString());
-          final day = double.parse(item['day'].toString());
-          return "('$empCode', CAST($day AS decimal(18,2)))";
+          final bfDay = item['bfDay'] == null
+              ? 'NULL'
+              : 'CAST(${double.parse(item['bfDay'].toString())} AS decimal(18,2))';
+          final crDay = item['crDay'] == null
+              ? 'NULL'
+              : 'CAST(${double.parse(item['crDay'].toString())} AS decimal(18,2))';
+          return "('$empCode', $bfDay, $crDay)";
         })
         .join(',\n');
 
     return query('''
 WITH Requested AS
 (
-  SELECT EMP_CODE, SUM(DAY_) AS NEW_DAY
+  SELECT EMP_CODE, SUM(BF_DAY) AS NEW_BF_DAY, SUM(CR_DAY) AS NEW_CR_DAY
   FROM (VALUES
 $values
-  ) V(EMP_CODE, DAY_)
+  ) V(EMP_CODE, BF_DAY, CR_DAY)
   GROUP BY EMP_CODE
 )
 SELECT
   CAST(Q.EMP_CODE AS VARCHAR(50)) AS empCode,
-  CAST(SUM(ISNULL(R.DAY_, 0)) AS DECIMAL(18,2)) AS currentDay,
-  CAST(Q.NEW_DAY AS DECIMAL(18,2)) AS newDay
+  CAST(MAX(CASE WHEN R.LV_CODE = 'BF(AL)' THEN R.DAY_ END) AS DECIMAL(18,2)) AS currentBfDay,
+  CAST(Q.NEW_BF_DAY AS DECIMAL(18,2)) AS newBfDay,
+  CAST(MAX(CASE WHEN R.LV_CODE = 'CR(AL)' THEN R.DAY_ END) AS DECIMAL(18,2)) AS currentCrDay,
+  CAST(Q.NEW_CR_DAY AS DECIMAL(18,2)) AS newCrDay
 FROM Requested Q
 INNER JOIN dbo.LV_RECORDS R
   ON R.EMP_CODE = Q.EMP_CODE
  AND YEAR(R.LV_DATE) = $year
- AND R.LV_CODE = 'BF(AL)'
- AND R.LV_EVENT_CODE = 'BRINGFORWARD'
-GROUP BY Q.EMP_CODE, Q.NEW_DAY
+ AND ((Q.NEW_BF_DAY IS NOT NULL AND R.LV_CODE = 'BF(AL)')
+   OR (Q.NEW_CR_DAY IS NOT NULL AND R.LV_CODE = 'CR(AL)'))
+GROUP BY Q.EMP_CODE, Q.NEW_BF_DAY, Q.NEW_CR_DAY
 ORDER BY Q.EMP_CODE
 ''', databaseName: database);
   }
@@ -830,19 +859,18 @@ ORDER BY Q.EMP_CODE
       candidates.add(item);
     }
 
-    // Reject rows whose LV_CODE isn't a LEAVE-event type (e.g. BF is a
-    // bring-forward code, not something that can be submitted as leave taken)
-    // before hitting the server, so one bad code can't abort the whole batch.
+    // Accept ordinary LEAVE-event types plus the operational PH/OFF/RL/REST
+    // codes used by Leave Taken. Validate before hitting the bulk procedure so
+    // one bad code cannot abort the whole batch.
     if (candidates.isNotEmpty) {
       final distinctCodes = candidates
           .map((item) => item['lvCode'].toString().trim().toUpperCase())
           .toSet();
-      final codeValues = distinctCodes
-          .map((c) => "('${_quote(c)}')")
-          .join(',');
+      final codeValues = distinctCodes.map((c) => "('${_quote(c)}')").join(',');
       final validCodeRows = await query(
         "SELECT V.LV_CODE FROM (VALUES $codeValues) V(LV_CODE) "
-        "WHERE EXISTS (SELECT 1 FROM dbo.LV_TYPE T WHERE T.LV_CODE = V.LV_CODE AND T.LV_EVENT_CODE = 'LEAVE')",
+        "WHERE EXISTS (SELECT 1 FROM dbo.LV_TYPE T WHERE T.LV_CODE = V.LV_CODE "
+        "AND (T.LV_EVENT_CODE = 'LEAVE' OR T.LV_CODE IN ('PH', 'OFF', 'RL', 'REST')))",
         databaseName: database,
       );
       final validCodes = validCodeRows
@@ -856,9 +884,8 @@ ORDER BY Q.EMP_CODE
           if (invalidCodes.contains(lvCode)) {
             failures.add({
               ...item,
-              'reason': lvCode == 'BF'
-                  ? 'BF is not leave taken'
-                  : 'Invalid leave code "$lvCode" is not configured as a LEAVE type',
+              'reason':
+                  'Invalid leave code "$lvCode" is not configured for Leave Taken',
             });
           } else {
             remaining.add(item);
@@ -888,9 +915,8 @@ INNER JOIN (VALUES
 $values
 ) V(EMP_CODE, LV_DATE, LV_CODE)
   ON R.EMP_CODE = V.EMP_CODE
- AND R.LV_DATE = V.LV_DATE
+ AND CAST(R.LV_DATE AS date) = V.LV_DATE
  AND R.LV_CODE = V.LV_CODE
-WHERE R.LV_EVENT_CODE = 'LEAVE'
 ''', databaseName: database);
 
       final dupKeys = duplicateRows.map(_leaveRowKey).toSet();
@@ -900,7 +926,8 @@ WHERE R.LV_EVENT_CODE = 'LEAVE'
           if (dupKeys.contains(_leaveRowKey(item))) {
             failures.add({
               ...item,
-              'reason': 'Leave record already exists for this employee/date/type',
+              'reason':
+                  'Leave record already exists for this employee/date/type',
             });
           } else {
             remaining.add(item);
@@ -911,9 +938,10 @@ WHERE R.LV_EVENT_CODE = 'LEAVE'
     }
 
     if (candidates.isNotEmpty) {
-      final missingCodes = (await _missingStaffCodes(candidates, database))
-          .map((c) => c.trim().toUpperCase())
-          .toSet();
+      final missingCodes = (await _missingStaffCodes(
+        candidates,
+        database,
+      )).map((c) => c.trim().toUpperCase()).toSet();
       if (missingCodes.isNotEmpty) {
         final remaining = <Map<String, dynamic>>[];
         for (final item in candidates) {

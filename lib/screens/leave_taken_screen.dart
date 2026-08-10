@@ -68,6 +68,7 @@ class LeaveTakenScreen extends StatefulWidget {
 }
 
 class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
+  static const _additionalLeaveCodes = {'PH', 'OFF', 'RL', 'REST'};
   final List<_LeaveRow> _rows = [];
   final DirectDbClient _dbClient = DirectDbClient();
   final _databaseCtrl = TextEditingController();
@@ -115,6 +116,12 @@ class _LeaveTakenScreenState extends State<LeaveTakenScreen> {
           final desc = (t['lvDesc'] as String? ?? '').trim();
           return {'code': code, 'desc': desc};
         }).toList();
+        for (final code in _additionalLeaveCodes) {
+          if (!_leaveTypes.any((type) => type['code'] == code)) {
+            _leaveTypes.add({'code': code, 'desc': code});
+          }
+        }
+        _leaveTypes.sort((a, b) => a['code']!.compareTo(b['code']!));
       });
     } catch (e) {
       _showSnack('Failed to load leave types: $e', isError: true);

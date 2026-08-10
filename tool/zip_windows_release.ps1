@@ -11,6 +11,8 @@ $ReleaseDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
 $ReleasesDir = Join-Path $ProjectRoot "releases"
 $SetupPs1Source = Join-Path $PSScriptRoot "setup_windows_release.ps1"
 $SetupBatSource = Join-Path $PSScriptRoot "setup_windows_release.bat"
+$TemplatesSource = Join-Path $ProjectRoot "templates"
+$ManualSource = Join-Path $ProjectRoot "docs\HR_Leave_Management_User_Manual.docx"
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     if (-not (Test-Path $PubspecPath)) {
@@ -43,11 +45,21 @@ if (-not (Test-Path $ReleaseDir)) {
     throw "Release folder not found: $ReleaseDir. Run flutter build windows --release first, or run this script with -Build."
 }
 
+$TemplatesDestination = Join-Path $ReleaseDir "templates"
+if (Test-Path $TemplatesDestination) {
+    Remove-Item -LiteralPath $TemplatesDestination -Recurse -Force
+}
+Copy-Item -LiteralPath $TemplatesSource -Destination $TemplatesDestination -Recurse -Force
+New-Item -ItemType Directory -Path (Join-Path $ReleaseDir "docs") -Force | Out-Null
+Copy-Item -LiteralPath $ManualSource -Destination (Join-Path $ReleaseDir "docs\HR_Leave_Management_User_Manual.docx") -Force
+
 $RequiredItems = @(
     "leave_management.exe",
     "flutter_windows.dll",
     "data",
     "stored_procedure",
+    "templates",
+    "docs",
     "config.ini"
 )
 

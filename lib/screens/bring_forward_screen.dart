@@ -13,26 +13,39 @@ import 'package:leave_management/core/db_client.dart';
 // ---------------------------------------------------------------------------
 class _BfRow {
   final TextEditingController empCodeCtrl = TextEditingController();
-  final TextEditingController dayCtrl = TextEditingController();
+  final TextEditingController bfDayCtrl = TextEditingController();
+  final TextEditingController crDayCtrl = TextEditingController();
 
-  _BfRow({String empCode = '', String day = ''}) {
+  _BfRow({String empCode = '', String bfDay = '', String crDay = ''}) {
     empCodeCtrl.text = empCode;
-    dayCtrl.text = day;
+    bfDayCtrl.text = bfDay;
+    crDayCtrl.text = crDay;
   }
 
   void dispose() {
     empCodeCtrl.dispose();
-    dayCtrl.dispose();
+    bfDayCtrl.dispose();
+    crDayCtrl.dispose();
   }
 
-  bool get isValid =>
-      empCodeCtrl.text.trim().isNotEmpty &&
-      double.tryParse(dayCtrl.text.trim()) != null;
+  bool get isValid {
+    final bfText = bfDayCtrl.text.trim();
+    final crText = crDayCtrl.text.trim();
+    final bfIsValid = bfText.isEmpty || double.tryParse(bfText) != null;
+    final crIsValid = crText.isEmpty || double.tryParse(crText) != null;
+    return empCodeCtrl.text.trim().isNotEmpty &&
+        (bfText.isNotEmpty || crText.isNotEmpty) &&
+        bfIsValid &&
+        crIsValid;
+  }
 
   Map<String, dynamic> toMap() {
+    final bfText = bfDayCtrl.text.trim();
+    final crText = crDayCtrl.text.trim();
     return {
       'empCode': empCodeCtrl.text.trim(),
-      'day': double.parse(dayCtrl.text.trim()),
+      'bfDay': bfText.isEmpty ? null : double.parse(bfText),
+      'crDay': crText.isEmpty ? null : double.parse(crText),
     };
   }
 }
@@ -117,7 +130,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Excel import  (Sheet: "BF" | A=empCode  B=name(skip)  C=days  D=remark)
+  // Excel import (Sheet: "BF" | A=empCode B=name(skip) C=BF days D=CR days)
   // -------------------------------------------------------------------------
   Future<void> _importFromExcel() async {
     setState(() => _isImporting = true);
@@ -161,15 +174,19 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       for (final row in sheet.rows.skip(1)) {
         final empCode = _cellStr(row, 0); // Column A
         // Column B (index 1) = emp name — intentionally skipped
-        final dayRaw = _cellStr(row, 2); // Column C
+        final bfDayRaw = _cellStr(row, 2); // Column C
+        final crDayRaw = _cellStr(row, 3); // Column D
 
         if (empCode.isEmpty) {
           skipped++;
           continue;
         }
 
-        final day = double.tryParse(dayRaw);
-        if (day == null) {
+        final bfDay = bfDayRaw.isEmpty ? null : double.tryParse(bfDayRaw);
+        final crDay = crDayRaw.isEmpty ? null : double.tryParse(crDayRaw);
+        if ((bfDayRaw.isNotEmpty && bfDay == null) ||
+            (crDayRaw.isNotEmpty && crDay == null) ||
+            (bfDay == null && crDay == null)) {
           skipped++;
           continue;
         }
@@ -177,7 +194,8 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         newRows.add(
           _BfRow(
             empCode: empCode,
-            day: dayRaw.contains('.') ? day.toString() : day.toStringAsFixed(0),
+            bfDay: _formatImportedDay(bfDayRaw, bfDay),
+            crDay: _formatImportedDay(crDayRaw, crDay),
           ),
         );
       }
@@ -219,19 +237,22 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
       sheet.appendRow([
         TextCellValue('Employee Code'),
         TextCellValue('Employee Name'),
-        TextCellValue('Days'),
+        TextCellValue('Bring Forward Days'),
+        TextCellValue('Credit Leave Days'),
       ]);
 
       // Export current table content if any row is populated
       int exportedRowsCount = 0;
       for (final row in _rows) {
         final empCode = row.empCodeCtrl.text.trim();
-        final days = row.dayCtrl.text.trim();
-        if (empCode.isNotEmpty || days.isNotEmpty) {
+        final bfDays = row.bfDayCtrl.text.trim();
+        final crDays = row.crDayCtrl.text.trim();
+        if (empCode.isNotEmpty || bfDays.isNotEmpty || crDays.isNotEmpty) {
           sheet.appendRow([
             TextCellValue(empCode),
             TextCellValue(''), // Name column (skipped on import)
-            TextCellValue(days),
+            TextCellValue(bfDays),
+            TextCellValue(crDays),
           ]);
           exportedRowsCount++;
         }
@@ -285,6 +306,11 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         : day.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
   }
 
+  String _formatImportedDay(String raw, double? value) {
+    if (value == null) return '';
+    return raw.contains('.') ? value.toString() : value.toStringAsFixed(0);
+  }
+
   Future<bool> _confirmExistingBringForward(
     String database,
     List<Map<String, dynamic>> existing,
@@ -292,7 +318,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Existing BF Found'),
+            title: Text('Existing BF / Credit Leave Found'),
             content: SizedBox(
               width: 520,
               child: Column(
@@ -300,7 +326,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'BF already exists for ${existing.length} employee(s) in $_selectedYear.',
+                    'BF or CR already exists for ${existing.length} employee(s) in $_selectedYear.',
                     style: TextStyle(color: AppColors.textPrimary),
                   ),
                   SizedBox(height: 8),
@@ -343,7 +369,12 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                                 ),
                               ),
                               Text(
-                                '${_formatDay(row['currentDay'])} → ${_formatDay(row['newDay'])} days',
+                                [
+                                  if (row['newBfDay'] != null)
+                                    'BF ${_formatDay(row['currentBfDay'] ?? 0)} → ${_formatDay(row['newBfDay'])}',
+                                  if (row['newCrDay'] != null)
+                                    'CR ${_formatDay(row['currentCrDay'] ?? 0)} → ${_formatDay(row['newCrDay'])}',
+                                ].join('  |  '),
                                 style: TextStyle(
                                   color: AppColors.warning,
                                   fontWeight: FontWeight.w600,
@@ -357,7 +388,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Choose Replace & Continue to overwrite these BF values. '
+                    'Choose Replace & Continue to overwrite the listed BF/CR values. '
                     'Otherwise, cancel, remove the existing employee rows, and submit again.',
                     style: TextStyle(
                       color: AppColors.warning,
@@ -397,7 +428,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
 
     if (validRows.isEmpty) {
       _showSnack(
-        'Please add at least one valid row (Employee Code + Days are required).',
+        'Please add at least one valid row (Employee Code and BF or CR Days are required).',
         isError: true,
       );
       return;
@@ -433,47 +464,47 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     final confirmed = existing.isNotEmpty
         ? await _confirmExistingBringForward(db, existing)
         : await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Confirm Bring Forward'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'You are about to add bring-forward leave for '
-              '${validRows.length} employee(s).',
-              style: TextStyle(color: AppColors.textPrimary),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Target Database: $db\n'
-              'Target Year: $_selectedYear',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                height: 1.5,
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text('Confirm BF / Credit Leave'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You are about to add bring-forward or credit leave for '
+                    '${validRows.length} employee(s).',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Target Database: $db\n'
+                    'Target Year: $_selectedYear',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    '⚠️  This action cannot be undone. Proceed?',
+                    style: TextStyle(color: AppColors.warning, fontSize: 13),
+                  ),
+                ],
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text('Confirm'),
+                ),
+              ],
             ),
-            SizedBox(height: 12),
-            Text(
-              '⚠️  This action cannot be undone. Proceed?',
-              style: TextStyle(color: AppColors.warning, fontSize: 13),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Confirm'),
-          ),
-        ],
-      ),
-    );
+          );
 
     if (confirmed != true) return;
 
@@ -493,7 +524,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         _isSuccess = true;
         _resultMessage =
             result['message'] as String? ??
-            'Bring forward leave added successfully!';
+            'Bring forward and credit leave added successfully!';
 
         // Clear all table rows and restart with one blank row
         for (final row in _rows) {
@@ -632,7 +663,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Bring Forward Leave',
+              'Bring Forward & Credit Leave',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
@@ -640,7 +671,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
               ),
             ),
             Text(
-              'Bulk allocation of carry-forward annual leave',
+              'Bulk allocation of carry-forward and credit annual leave',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ],
@@ -809,7 +840,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
                   ),
                 )
               : Icon(Icons.send_outlined, size: 16),
-          label: Text(_isLoading ? 'Processing…' : 'Run Bring Forward'),
+          label: Text(_isLoading ? 'Processing…' : 'Run BF / Credit Leave'),
         ),
       ],
     );
@@ -944,9 +975,22 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
           ),
           SizedBox(width: 12),
           SizedBox(
-            width: 120,
+            width: 170,
             child: Text(
-              'DAYS',
+              'BRING FORWARD DAYS',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+          SizedBox(
+            width: 170,
+            child: Text(
+              'CREDIT LEAVE DAYS',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12,
@@ -997,18 +1041,36 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             ),
           ),
           SizedBox(width: 12),
-          // Column C: days
+          // Column C: bring-forward days
           SizedBox(
-            width: 120,
+            width: 170,
             child: TextField(
-              controller: row.dayCtrl,
+              controller: row.bfDayCtrl,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
               ],
               decoration: InputDecoration(
-                hintText: 'Days Leave',
+                hintText: 'Bring Forward Days',
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          SizedBox(width: 12),
+          // Column D: credit leave days
+          SizedBox(
+            width: 170,
+            child: TextField(
+              controller: row.crDayCtrl,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+              ],
+              decoration: InputDecoration(
+                hintText: 'Credit Leave Days',
                 isDense: true,
               ),
               onChanged: (_) => setState(() {}),

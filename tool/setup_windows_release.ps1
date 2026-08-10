@@ -33,7 +33,7 @@ if (-not (Test-Path $SourceConfig -PathType Leaf)) {
     throw "Cannot find config.ini in the release source: $SourceDir"
 }
 
-foreach ($RequiredDirectory in @("data", "stored_procedure")) {
+foreach ($RequiredDirectory in @("data", "stored_procedure", "templates", "docs")) {
     $RequiredPath = Join-Path $SourceDir $RequiredDirectory
     if (-not (Test-Path $RequiredPath -PathType Container)) {
         throw "Cannot find required release directory: $RequiredPath"

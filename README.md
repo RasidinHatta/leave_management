@@ -5,7 +5,7 @@ Windows desktop application for managing leave operations directly against SQL S
 ## Main Features
 
 - User login with role-based menus.
-- Bring Forward Leave bulk entry and Excel import/export.
+- Bring Forward and Credit Leave bulk entry and Excel import/export.
 - Leave Taken bulk entry and Excel import/export, with chunked submission and a
   progress indicator for large imports, and a failed-rows Excel report for
   anything that could not be imported (see [Leave Taken Bulk Import](#leave-taken-bulk-import)).
@@ -21,9 +21,9 @@ Sample import templates are in [`templates/`](templates/): `Bring_Forward_Templa
 
 | Role | Visible menus |
 | --- | --- |
-| `ADMIN` | Bring Forward, Leave Taken, DB Targets, Leave Report Config, Manage Users |
-| `USER` | Bring Forward, Leave Taken |
-| `REPORT` | Leave Report Config |
+| `ADMIN` | Bring Forward, Leave Taken, DB Targets; plus Leave Report Config and Manage Users when `Admin=1` |
+| `USER` | Bring Forward, Leave Taken; plus Leave Report Config and Manage Users when `Admin=1` |
+| `REPORT` | Leave Report Config and Manage Users only when `Admin=1` |
 
 `ADMIN` users are hidden from Manage Users. New/editable users are limited to `USER` and `REPORT`.
 
@@ -61,11 +61,15 @@ Example:
 Server=DIN-STT
 Database=MYPAY_LCO
 Driver=ODBC Driver 17 for SQL Server
+Admin=1
 ```
 
 Notes:
 
 - `[DatabaseConfig]` controls normal leave operations.
+- `Admin=1` shows the **Leave Report Config** and **Manage Users** sidebar
+  menus. Both menus are hidden when the setting is omitted or set to `0`,
+  including for an `ADMIN` login. **DB Targets** remains role-controlled.
 - Leave Report Config defaults to `v1soho.com,1500`.
 - To use a custom report server, add `[ReportConfig]` with only `Server=SERVER_NAME,PORT`.
 - The report config driver always matches `[DatabaseConfig] Driver`.
@@ -106,6 +110,8 @@ Use this method for normal users.
    flutter_windows.dll
    data\
    stored_procedure\
+   templates\
+   docs\
    ```
 
 6. To install the app to a local folder, run:
@@ -145,6 +151,8 @@ Important:
 - Keep `config.ini` beside `leave_management.exe`.
 - Keep the `data\` folder beside `leave_management.exe`.
 - Keep the `stored_procedure\` folder beside `leave_management.exe` so DB Targets `Update Query` can run.
+- Keep `templates\` for the current BF/CR and Leave Taken sample workbooks.
+- The current user manual is included under `docs\`.
 - Do not run the exe directly from inside the zip file. Extract it first.
 
 ## Create Release Zip For GitHub
@@ -154,10 +162,10 @@ Use this method when preparing a new release package.
 1. Set the app version in `pubspec.yaml`:
 
    ```yaml
-   version: 1.0.1+7
+   version: 1.0.5+12
    ```
 
-   The part before `+` is the release version. For example, `1.0.1+7` creates a zip ending with `1.0.1`.
+   The part before `+` is the release version. For example, `1.0.5+12` creates a zip ending with `1.0.5`.
 
 2. Build the Windows release:
 
@@ -196,7 +204,7 @@ Use this method when preparing a new release package.
    To override the version manually:
 
    ```powershell
-   .\tool\zip_windows_release.ps1 -Version 1.0.1
+   .\tool\zip_windows_release.ps1 -Version 1.0.5
    ```
 
    To build and zip in one command:
@@ -241,9 +249,9 @@ independently and only submits the rows that pass.
 
 - Rows are skipped individually, not batch-wide, for: duplicate rows within
   the import file, rows that already exist in the database, employee codes
-  not found in `dbo.STAFF`, and leave codes that are not configured as a
-  `LEAVE`-event type in `dbo.LV_TYPE` (for example `BF`, which is a
-  bring-forward code, not a leave-taken code).
+  not found in `dbo.STAFF`, and leave codes that are not configured for Leave
+  Taken in `dbo.LV_TYPE`. Ordinary `LEAVE` event codes and the operational
+  codes `PH`, `OFF`, `RL`, and `REST` are accepted.
 - Large imports (thousands of rows) are submitted to
   `sp_AddLeaveRecords_Bulk` in chunks of 250 rows instead of one large SQL
   script, with a live "Processing chunk X of Y" indicator. If a chunk fails
@@ -261,9 +269,11 @@ independently and only submits the rows that pass.
   rows that failed (or were never valid) remain so they can be corrected and
   resubmitted.
 
-Bring Forward has not changed: it still validates the whole batch up front
-and rejects it entirely if any employee code is missing (see
-[Frequently Asked Questions](#frequently-asked-questions)).
+Bring Forward and Credit Leave validate the whole batch up front and reject it
+entirely if any employee code is missing (see
+[Frequently Asked Questions](#frequently-asked-questions)). The Excel sheet
+uses column C for BF days and column D for CR days; at least one value is
+required per employee.
 
 ## First Run Checklist
 
@@ -279,6 +289,32 @@ and rejects it entirely if any employee code is missing (see
 10. Open Manage Users and create `USER` or `REPORT` users as needed.
 
 ## Changelog
+
+### Version 1.0.5
+
+- Build `1.0.5+12`: Leave Taken now detects an existing record by employee,
+  calendar date, and leave code even when the stored `LV_DATE` contains a time
+  component or the record has different event metadata. Existing rows are
+  skipped and written to the automatic failed-rows Excel report while other
+  valid rows continue processing.
+- **Leave Report Config** and **Manage Users** are now strictly hidden unless
+  `[DatabaseConfig] Admin=1`; **DB Targets** remains controlled by the database
+  ADMIN role.
+- Renamed the BF/Credit Leave frontend labels for clarity and fixed fractional
+  overflow in Settings color-theme cards at larger font scales.
+
+### Version 1.0.4
+
+- Build `1.0.4+11`: added Credit Leave entry alongside Bring Forward. Credit
+  values are stored as `CR(AL)` and recalculate `CR`, `YTD_CR`, and annual
+  leave balances alongside `BF(AL)`.
+- Added separate **Bring Forward Days** and **Credit Leave Days** fields to the
+  screen, Excel import/export, and packaged sample workbook.
+- Added `PH`, `OFF`, `RL`, and `REST` to Leave Taken while preserving each
+  code's configured `LV_TYPE.LV_EVENT_CODE`.
+- Added the `[DatabaseConfig]` setting `Admin=1` to show **Leave Report Config**
+  and **Manage Users** in the sidebar. Database authorization checks remain in
+  force for user-management operations.
 
 ### Version 1.0.3
 
@@ -354,9 +390,9 @@ For Leave Taken, each affected row is listed individually in the failed-rows Exc
 
 The application checks only whether the employee code exists in `dbo.STAFF`. It does not check active status, resignation date, or termination status. A resigned employee who remains in `dbo.STAFF` can therefore receive BF and leave records. If the employee has been removed from `dbo.STAFF`, the employee is treated as nonexistent: the BF batch is rejected, or the Leave Taken row is skipped and reported in the failed-rows export.
 
-### Does submitting BF again add to or replace the existing value?
+### Does submitting BF or CR again add to or replace the existing value?
 
-When submitted BF contains an employee who already has BF for the target year, the application shows the existing and requested values. Choose `Replace & Continue` to replace the existing value, or cancel, remove that employee's row, and submit again. For example, if the stored BF is `10` and the confirmed replacement is `20`, the BF becomes `20`, not `30`. The corresponding `LV_SUMMARY` values are recalculated using `20`.
+When submitted BF or CR contains an employee who already has that value for the target year, the application shows the existing and requested values. Choose `Replace & Continue` to replace the existing value, or cancel, remove that employee's row, and submit again. For example, if the stored BF is `10` and the confirmed replacement is `20`, the BF becomes `20`, not `30`. BF and CR are independently optional, so leaving one blank does not replace it. The corresponding `LV_SUMMARY` values are recalculated.
 
 ### What happens if the same employee appears more than once in one BF batch?
 
@@ -380,7 +416,7 @@ They are allowed only when their combined duration does not exceed one day and t
 
 ### Can a leave code that isn't a "leave taken" type (for example `BF`) be imported through Leave Taken?
 
-No. Leave Taken only accepts leave codes configured in `dbo.LV_TYPE` with `LV_EVENT_CODE = 'LEAVE'`. Rows using any other code (for example `BF`, which is a bring-forward code) are skipped with reason `BF is not leave taken` (or a generic invalid-leave-code reason for other codes) in the failed-rows export.
+Leave Taken accepts codes configured in `dbo.LV_TYPE` with `LV_EVENT_CODE = 'LEAVE'`, plus `PH`, `OFF`, `RL`, and `REST`. Other codes (for example `BF`) are skipped with an invalid-code reason in the failed-rows export.
 
 ### What should I do if release ZIP creation reports a user-mapped section error?
 

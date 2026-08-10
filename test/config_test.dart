@@ -18,6 +18,7 @@ void main() {
 Server=DEBUG-SERVER
 Database=DEBUG-DATABASE
 Driver=DEBUG-DRIVER
+Admin=1
 ''');
       Directory.current = temporaryDirectory;
 
@@ -26,6 +27,19 @@ Driver=DEBUG-DRIVER
       expect(kServerName, 'DEBUG-SERVER');
       expect(kDatabaseName, 'DEBUG-DATABASE');
       expect(kDriverName, 'DEBUG-DRIVER');
+      expect(kAdminMenuEnabled, isTrue);
+
+      await File(
+        '${temporaryDirectory.path}${Platform.pathSeparator}config.ini',
+      ).writeAsString('''
+[DatabaseConfig]
+Server=DEBUG-SERVER
+Database=DEBUG-DATABASE
+Driver=DEBUG-DRIVER
+''');
+
+      await loadConfig();
+      expect(kAdminMenuEnabled, isFalse);
     } finally {
       Directory.current = originalWorkingDirectory;
       await temporaryDirectory.delete(recursive: true);

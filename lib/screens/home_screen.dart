@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    if (_role == 'REPORT') {
+    if (_role == 'REPORT' && kAdminMenuEnabled) {
       _current = _Nav.leaveReportConfig;
     }
   }
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static final _mainItems = [
     _SidebarItem(
       icon: Icons.arrow_circle_right_outlined,
-      label: 'Bring Forward',
+      label: 'BF / Credit Leave',
       nav: _Nav.bringForward,
     ),
     _SidebarItem(
@@ -126,6 +126,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---- Sidebar -------------------------------------------------------------
   Widget _buildSidebar() {
+    final configurationItems = <_SidebarItem>[
+      if (_role == 'ADMIN')
+        _SidebarItem(
+          icon: Icons.storage_outlined,
+          label: 'DB Targets',
+          nav: _Nav.targets,
+        ),
+      if (kAdminMenuEnabled)
+        _SidebarItem(
+          icon: Icons.fact_check_outlined,
+          label: 'Leave Report Config',
+          nav: _Nav.leaveReportConfig,
+        ),
+      if (kAdminMenuEnabled)
+        _SidebarItem(
+          icon: Icons.people_outline,
+          label: 'Manage Users',
+          nav: _Nav.manageUsers,
+        ),
+    ];
+
     return Container(
       width: 232,
       color: AppColors.surface,
@@ -138,33 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildSection('MAIN', _mainItems),
             SizedBox(height: 8),
           ],
-          if (_role == 'ADMIN') ...[
-            _buildSection('CONFIGURATION', [
-              _SidebarItem(
-                icon: Icons.storage_outlined,
-                label: 'DB Targets',
-                nav: _Nav.targets,
-              ),
-              _SidebarItem(
-                icon: Icons.fact_check_outlined,
-                label: 'Leave Report Config',
-                nav: _Nav.leaveReportConfig,
-              ),
-              _SidebarItem(
-                icon: Icons.people_outline,
-                label: 'Manage Users',
-                nav: _Nav.manageUsers,
-              ),
-            ]),
-            SizedBox(height: 8),
-          ] else if (_role == 'REPORT') ...[
-            _buildSection('CONFIGURATION', [
-              _SidebarItem(
-                icon: Icons.fact_check_outlined,
-                label: 'Leave Report Config',
-                nav: _Nav.leaveReportConfig,
-              ),
-            ]),
+          if (configurationItems.isNotEmpty) ...[
+            _buildSection('CONFIGURATION', configurationItems),
             SizedBox(height: 8),
           ],
           Spacer(),
@@ -527,29 +523,35 @@ class _HomeScreenState extends State<HomeScreen> {
                             valueListenable:
                                 LeaveManagementApp.appearanceNotifier,
                             builder: (context, appearance, child) {
-                              return GridView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: AppPalette.values.length,
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      crossAxisSpacing: 10,
-                                      mainAxisSpacing: 10,
-                                      childAspectRatio: 2.35,
-                                    ),
-                                itemBuilder: (context, index) {
-                                  final palette = AppPalette.values[index];
-                                  return _paletteOption(
-                                    palette: palette,
-                                    selected: appearance.palette == palette,
-                                    onTap: () {
-                                      LeaveManagementApp
-                                          .appearanceNotifier
-                                          .value = appearance.copyWith(
-                                        palette: palette,
+                              return LayoutBuilder(
+                                builder: (context, constraints) {
+                                  const spacing = 10.0;
+                                  final columnCount =
+                                      constraints.maxWidth >= 360 ? 2 : 1;
+                                  final tileWidth = columnCount == 2
+                                      ? (constraints.maxWidth - spacing) / 2
+                                      : constraints.maxWidth;
+
+                                  return Wrap(
+                                    spacing: spacing,
+                                    runSpacing: spacing,
+                                    children: AppPalette.values.map((palette) {
+                                      return SizedBox(
+                                        width: tileWidth,
+                                        child: _paletteOption(
+                                          palette: palette,
+                                          selected:
+                                              appearance.palette == palette,
+                                          onTap: () {
+                                            LeaveManagementApp
+                                                .appearanceNotifier
+                                                .value = appearance.copyWith(
+                                              palette: palette,
+                                            );
+                                          },
+                                        ),
                                       );
-                                    },
+                                    }).toList(),
                                   );
                                 },
                               );
