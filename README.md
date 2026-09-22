@@ -247,6 +247,16 @@ Leave Taken import behaves differently from Bring Forward: instead of
 rejecting the whole batch when some rows are invalid, it validates each row
 independently and only submits the rows that pass.
 
+Bring Forward / Credit Leave imports are validated and submitted sequentially
+in chunks of 250 employee records, with live chunk progress in the app. Rows
+for the same employee are combined before chunking so their BF and CR values
+retain the bulk procedure's existing sum behavior. Each completed chunk is
+committed separately; if a later chunk fails, the app reports how many records
+completed and instructs the operator to review the saved data before retrying.
+Employee codes missing from `dbo.STAFF` are skipped without stopping valid
+rows, written to `log\BF_CR_Import_Failed_<timestamp>.xlsx`, and removed from
+the on-screen table after the failure file is saved.
+
 - Rows are skipped individually, not batch-wide, for: duplicate rows within
   the import file, rows that already exist in the database, employee codes
   not found in `dbo.STAFF`, and leave codes that are not configured for Leave
@@ -372,26 +382,20 @@ required per employee.
 
 ### What happens if an employee code does not exist or contains a typo?
 
-Both Bring Forward (BF) and Leave Taken validate employee codes against `dbo.STAFF` when the batch is submitted, but they respond differently:
+Both Bring Forward (BF) and Leave Taken validate employee codes against `dbo.STAFF` when the batch is submitted:
 
-- **Bring Forward** displays `Staff <code> doesnt exist` and rejects the entire batch. No rows are inserted, including rows with valid employee codes.
+- **Bring Forward** skips missing employees, continues processing valid employees, writes the rejected BF/CR rows to `log\BF_CR_Import_Failed_<timestamp>.xlsx`, and removes the completed and logged rows from the on-screen table.
 - **Leave Taken** skips only the rows with the missing employee code(s) and still submits the rest of the batch. The skipped rows appear in the failed-rows Excel export (see [Leave Taken Bulk Import](#leave-taken-bulk-import)) with reason `Employee code does not exist`.
 
 ### What happens when several employee codes in a batch do not exist?
 
-For Bring Forward, the error lists all missing codes in one message, for example:
-
-```text
-Staff E099, E088, E077 doesnt exist
-```
-
-and the whole BF batch is rejected. Correct or remove the invalid rows, then submit the complete batch again.
+For Bring Forward, each missing employee is written as a separate row in the BF/CR failed-rows Excel file. Valid employees continue through the chunked import.
 
 For Leave Taken, each affected row is listed individually in the failed-rows Excel export instead, and every other valid row is still imported.
 
 ### Can BF or leave be inserted for resigned staff?
 
-The application checks only whether the employee code exists in `dbo.STAFF`. It does not check active status, resignation date, or termination status. A resigned employee who remains in `dbo.STAFF` can therefore receive BF and leave records. If the employee has been removed from `dbo.STAFF`, the employee is treated as nonexistent: the BF batch is rejected, or the Leave Taken row is skipped and reported in the failed-rows export.
+The application checks only whether the employee code exists in `dbo.STAFF`. It does not check active status, resignation date, or termination status. A resigned employee who remains in `dbo.STAFF` can therefore receive BF and leave records. If the employee has been removed from `dbo.STAFF`, the employee is treated as nonexistent and its BF/CR or Leave Taken row is skipped and reported in the corresponding failed-rows export.
 
 ### Does submitting BF or CR again add to or replace the existing value?
 

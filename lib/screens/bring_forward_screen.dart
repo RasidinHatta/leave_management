@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:excel/excel.dart' hide Border;
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:leave_management/core/theme.dart';
@@ -75,6 +76,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
   String? _resultMessage;
   bool _isSuccess = false;
   String? _importSummary;
+  String? _progressText;
 
   @override
   void initState() {
@@ -288,6 +290,67 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     }
   }
 
+  String _logDirectoryPath() {
+    if (kDebugMode) {
+      return Directory(
+        '${Directory.current.path}${Platform.pathSeparator}log',
+      ).path;
+    }
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    return '$exeDir${Platform.pathSeparator}log';
+  }
+
+  Future<String> _exportFailuresToLog(
+    List<Map<String, dynamic>> failures,
+  ) async {
+    var excel = Excel.createExcel();
+    final defaultSheet = excel.getDefaultSheet();
+    if (defaultSheet != null) {
+      excel.rename(defaultSheet, 'BF');
+    }
+    final sheet = excel['BF'];
+    sheet.appendRow([
+      TextCellValue('Employee Code'),
+      TextCellValue('Employee Name'),
+      TextCellValue('Bring Forward Days'),
+      TextCellValue('Credit Leave Days'),
+      TextCellValue('failed_reason'),
+    ]);
+
+    for (final item in failures) {
+      sheet.appendRow([
+        TextCellValue((item['empCode'] ?? '').toString()),
+        TextCellValue(''),
+        TextCellValue(_formatDayForFailureFile(item['bfDay'])),
+        TextCellValue(_formatDayForFailureFile(item['crDay'])),
+        TextCellValue((item['reason'] ?? 'Unknown error').toString()),
+      ]);
+    }
+
+    final fileBytes = excel.save();
+    if (fileBytes == null) {
+      throw Exception('Failed to generate the BF/CR failed-rows Excel file.');
+    }
+
+    final logDir = Directory(_logDirectoryPath());
+    if (!await logDir.exists()) {
+      await logDir.create(recursive: true);
+    }
+    final now = DateTime.now();
+    final stamp =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
+        '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    final outputPath =
+        '${logDir.path}${Platform.pathSeparator}BF_CR_Import_Failed_$stamp.xlsx';
+    await File(outputPath).writeAsBytes(fileBytes);
+    return outputPath;
+  }
+
+  String _formatDayForFailureFile(dynamic value) {
+    if (value == null) return '';
+    return _formatDay(value);
+  }
+
   /// Safely extract a trimmed string value from a cell in a row.
   String _cellStr(List<Data?> row, int index) {
     if (index >= row.length) return '';
@@ -440,6 +503,7 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
     setState(() {
       _isLoading = true;
       _resultMessage = null;
+      _progressText = null;
     });
     try {
       existing = await DirectDbClient().getExistingBringForwardLeave(
@@ -519,19 +583,62 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         year: _selectedYear,
         list: payload,
         replaceExisting: existing.isNotEmpty,
+        onProgress: (chunkIndex, totalChunks, rowsDone, totalRows) {
+          if (!mounted) return;
+          setState(() {
+            _progressText =
+                'Processing chunk $chunkIndex of $totalChunks '
+                '($rowsDone/$totalRows employee records)...';
+          });
+        },
       );
-      setState(() {
-        _isSuccess = true;
-        _resultMessage =
-            result['message'] as String? ??
-            'Bring forward and credit leave added successfully!';
 
-        // Clear all table rows and restart with one blank row
-        for (final row in _rows) {
-          row.dispose();
+      final failures =
+          (result['failures'] as List?)?.cast<Map<String, dynamic>>() ??
+          const <Map<String, dynamic>>[];
+      final successCount = result['successCount'] as int? ?? 0;
+      String? failedFilePath;
+      if (failures.isNotEmpty) {
+        try {
+          failedFilePath = await _exportFailuresToLog(failures);
+        } catch (e) {
+          _showSnack(
+            'Could not save BF/CR failed-rows report: $e',
+            isError: true,
+          );
         }
-        _rows.clear();
-        _rows.add(_BfRow());
+      }
+
+      setState(() {
+        _isSuccess = successCount > 0;
+        final baseMessage =
+            result['message'] as String? ??
+            'Bring forward and credit leave processing completed.';
+        _resultMessage = failedFilePath == null
+            ? baseMessage
+            : '$baseMessage\nFailed rows saved to: $failedFilePath';
+
+        final keepFailedRows = failures.isNotEmpty && failedFilePath == null;
+        final failedCodes = failures
+            .map(
+              (item) => (item['empCode'] ?? '').toString().trim().toUpperCase(),
+            )
+            .toSet();
+        final remaining = <_BfRow>[];
+        for (final row in _rows) {
+          final shouldKeep =
+              keepFailedRows &&
+              failedCodes.contains(row.empCodeCtrl.text.trim().toUpperCase());
+          if (shouldKeep) {
+            remaining.add(row);
+          } else {
+            row.dispose();
+          }
+        }
+        _rows
+          ..clear()
+          ..addAll(remaining);
+        if (_rows.isEmpty) _rows.add(_BfRow());
         _importSummary = null;
       });
     } catch (e) {
@@ -544,7 +651,10 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
         _resultMessage = msg;
       });
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _progressText = null;
+      });
     }
   }
 
@@ -577,6 +687,10 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             if (_importSummary != null) ...[
               SizedBox(height: 10),
               _buildImportBanner(),
+            ],
+            if (_isLoading && _progressText != null) ...[
+              SizedBox(height: 10),
+              _buildProgressBanner(),
             ],
             SizedBox(height: 12),
             if (_resultMessage != null) ...[
@@ -870,6 +984,33 @@ class _BringForwardScreenState extends State<BringForwardScreen> {
             color: AppColors.textSecondary,
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(minWidth: 20, minHeight: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBanner() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.accentPanel,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _progressText!,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            ),
           ),
         ],
       ),

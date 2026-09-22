@@ -46,6 +46,10 @@ class _SqlScript {
 const int _leaveTakenChunkSize = 250;
 const int _leaveTakenMinChunkSize = 25;
 
+/// BF/CR imports use a bounded batch size so imports containing thousands of
+/// employees do not become one very large ODBC command.
+const int _bringForwardChunkSize = 250;
+
 const List<String> _mainDatabaseStoredProcedureScripts = [
   'sp_AddBringForwardLeave.sql',
   'sp_AddBringForwardLeave_Bulk.sql',
@@ -238,6 +242,23 @@ class DirectDbClient {
     String database,
     int year,
   ) async {
+    for (var start = 0; start < list.length; start += _bringForwardChunkSize) {
+      final end = (start + _bringForwardChunkSize < list.length)
+          ? start + _bringForwardChunkSize
+          : list.length;
+      await _assertBringForwardChunkSaved(
+        list.sublist(start, end),
+        database,
+        year,
+      );
+    }
+  }
+
+  Future<void> _assertBringForwardChunkSaved(
+    List<Map<String, dynamic>> list,
+    String database,
+    int year,
+  ) async {
     final values = list
         .map((item) {
           final empCode = _quote(item['empCode'].toString());
@@ -299,27 +320,24 @@ OR
     List<Map<String, dynamic>> list,
     String database,
   ) async {
-    final empValues = list
-        .map((item) => "('${_quote(item['empCode'].toString())}')")
-        .toSet()
-        .join(',');
-    final missing = await query(
-      "SELECT V.EMP_CODE FROM (VALUES $empValues) V(EMP_CODE) "
-      "WHERE NOT EXISTS (SELECT 1 FROM dbo.STAFF S WHERE S.EMP_CODE = V.EMP_CODE)",
-      databaseName: database,
-    );
-    return missing.map((r) => r['EMP_CODE'].toString()).toList();
-  }
-
-  /// Throws "Staff X doesnt exist" if any emp code in [list] is missing from dbo.STAFF.
-  Future<void> _assertStaffExist(
-    List<Map<String, dynamic>> list,
-    String database,
-  ) async {
-    final missing = await _missingStaffCodes(list, database);
-    if (missing.isNotEmpty) {
-      throw DatabaseException('Staff ${missing.join(', ')} doesnt exist');
+    final missingCodes = <String>{};
+    for (var start = 0; start < list.length; start += _bringForwardChunkSize) {
+      final end = (start + _bringForwardChunkSize < list.length)
+          ? start + _bringForwardChunkSize
+          : list.length;
+      final empValues = list
+          .sublist(start, end)
+          .map((item) => "('${_quote(item['empCode'].toString())}')")
+          .toSet()
+          .join(',');
+      final missing = await query(
+        "SELECT V.EMP_CODE FROM (VALUES $empValues) V(EMP_CODE) "
+        "WHERE NOT EXISTS (SELECT 1 FROM dbo.STAFF S WHERE S.EMP_CODE = V.EMP_CODE)",
+        databaseName: database,
+      );
+      missingCodes.addAll(missing.map((r) => r['EMP_CODE'].toString()));
     }
+    return missingCodes.toList();
   }
 
   Future<StoredProcedureUpdateResult> updateStoredProcedures({
@@ -721,15 +739,55 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     required int year,
     required List<Map<String, dynamic>> list,
     bool replaceExisting = false,
+    void Function(int chunkIndex, int totalChunks, int rowsDone, int totalRows)?
+    onProgress,
   }) async {
     if (list.isEmpty) throw DatabaseException('No records to add.');
 
-    await _assertStaffExist(list, database);
+    var records = _normaliseBringForwardRows(list);
+    final missingCodes = (await _missingStaffCodes(
+      records,
+      database,
+    )).map((code) => code.trim().toUpperCase()).toSet();
+    final failures = <Map<String, dynamic>>[];
+    if (missingCodes.isNotEmpty) {
+      failures.addAll(
+        records
+            .where(
+              (item) => missingCodes.contains(
+                item['empCode'].toString().trim().toUpperCase(),
+              ),
+            )
+            .map(
+              (item) => {
+                ...item,
+                'reason': 'Employee code does not exist in dbo.STAFF',
+              },
+            ),
+      );
+      records = records
+          .where(
+            (item) => !missingCodes.contains(
+              item['empCode'].toString().trim().toUpperCase(),
+            ),
+          )
+          .toList();
+    }
+
+    if (records.isEmpty) {
+      return {
+        'success': false,
+        'successCount': 0,
+        'failures': failures,
+        'message':
+            'No BF/CR records were added — all ${failures.length} employee record(s) failed validation.',
+      };
+    }
 
     final existing = await _getExistingBringForwardLeave(
       database: database,
       year: year,
-      list: list,
+      list: records,
     );
     if (existing.isNotEmpty && !replaceExisting) {
       final codes = existing.map((row) => row['empCode']).join(', ');
@@ -738,32 +796,85 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
       );
     }
 
-    final buffer = StringBuffer();
-    buffer.writeln('DECLARE @List dbo.BringForwardLeaveList;');
-    for (final item in list) {
-      final empCode = _quote(item['empCode'].toString());
-      final bfDay = item['bfDay'] == null
-          ? 'NULL'
-          : double.parse(item['bfDay'].toString()).toString();
-      final crDay = item['crDay'] == null
-          ? 'NULL'
-          : double.parse(item['crDay'].toString()).toString();
+    final totalChunks = (records.length / _bringForwardChunkSize).ceil();
+    var rowsDone = 0;
+    var chunkIndex = 0;
+    for (
+      var start = 0;
+      start < records.length;
+      start += _bringForwardChunkSize
+    ) {
+      chunkIndex++;
+      final end = (start + _bringForwardChunkSize < records.length)
+          ? start + _bringForwardChunkSize
+          : records.length;
+      final chunk = records.sublist(start, end);
+      final buffer = StringBuffer();
+      buffer.writeln('DECLARE @List dbo.BringForwardLeaveList;');
+      for (final item in chunk) {
+        final empCode = _quote(item['empCode'].toString());
+        final bfDay = item['bfDay'] == null
+            ? 'NULL'
+            : double.parse(item['bfDay'].toString()).toString();
+        final crDay = item['crDay'] == null
+            ? 'NULL'
+            : double.parse(item['crDay'].toString()).toString();
+        buffer.writeln(
+          "INSERT INTO @List (EMP_CODE, BF_DAY, CR_DAY) VALUES ('$empCode', $bfDay, $crDay);",
+        );
+      }
       buffer.writeln(
-        "INSERT INTO @List (EMP_CODE, BF_DAY, CR_DAY) VALUES ('$empCode', $bfDay, $crDay);",
+        'EXEC dbo.sp_AddBringForwardLeave_Bulk @Year = $year, @Month = 1, @List = @List;',
       );
-    }
-    buffer.writeln(
-      'EXEC dbo.sp_AddBringForwardLeave_Bulk @Year = $year, @Month = 1, @List = @List;',
-    );
 
-    await executeSp(buffer.toString(), databaseName: database);
-    await _assertBringForwardRecordsSaved(list, database, year);
+      try {
+        await executeSp(buffer.toString(), databaseName: database);
+        await _assertBringForwardRecordsSaved(chunk, database, year);
+      } catch (e) {
+        final reason = e is DatabaseException ? e.message : e.toString();
+        throw DatabaseException(
+          'BF/CR processing stopped at chunk $chunkIndex of $totalChunks '
+          'after successfully completing $rowsDone of ${records.length} '
+          'employee record(s). Because each chunk commits separately, review '
+          'the current BF/CR data before retrying. $reason',
+        );
+      }
+
+      rowsDone += chunk.length;
+      onProgress?.call(chunkIndex, totalChunks, rowsDone, records.length);
+    }
 
     return {
       'success': true,
-      'message':
-          'Successfully added ${list.length} bring forward/credit leave records in $kServerName / $database',
+      'successCount': records.length,
+      'failures': failures,
+      'message': failures.isEmpty
+          ? 'Successfully added ${records.length} bring forward/credit leave records in $kServerName / $database'
+          : 'Added ${records.length} bring forward/credit leave records in $kServerName / $database. '
+                '${failures.length} missing employee record(s) were skipped.',
     };
+  }
+
+  List<Map<String, dynamic>> _normaliseBringForwardRows(
+    List<Map<String, dynamic>> list,
+  ) {
+    final byEmployee = <String, Map<String, dynamic>>{};
+    for (final item in list) {
+      final empCode = item['empCode'].toString().trim();
+      final key = empCode.toUpperCase();
+      final record = byEmployee.putIfAbsent(
+        key,
+        () => {'empCode': empCode, 'bfDay': null, 'crDay': null},
+      );
+      for (final field in const ['bfDay', 'crDay']) {
+        final value = item[field];
+        if (value != null) {
+          record[field] =
+              (record[field] as double? ?? 0) + double.parse(value.toString());
+        }
+      }
+    }
+    return byEmployee.values.toList();
   }
 
   Future<List<Map<String, dynamic>>> getExistingBringForwardLeave({
@@ -772,11 +883,23 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     required List<Map<String, dynamic>> list,
   }) async {
     if (list.isEmpty) return [];
-    await _assertStaffExist(list, database);
+    final records = _normaliseBringForwardRows(list);
+    final missingCodes = (await _missingStaffCodes(
+      records,
+      database,
+    )).map((code) => code.trim().toUpperCase()).toSet();
+    final validRecords = records
+        .where(
+          (item) => !missingCodes.contains(
+            item['empCode'].toString().trim().toUpperCase(),
+          ),
+        )
+        .toList();
+    if (validRecords.isEmpty) return [];
     return _getExistingBringForwardLeave(
       database: database,
       year: year,
-      list: list,
+      list: validRecords,
     );
   }
 
@@ -784,21 +907,28 @@ ORDER BY CAST(LV_CODE AS VARCHAR(50))
     required String database,
     required int year,
     required List<Map<String, dynamic>> list,
-  }) {
-    final values = list
-        .map((item) {
-          final empCode = _quote(item['empCode'].toString());
-          final bfDay = item['bfDay'] == null
-              ? 'CAST(NULL AS decimal(18,2))'
-              : 'CAST(${double.parse(item['bfDay'].toString())} AS decimal(18,2))';
-          final crDay = item['crDay'] == null
-              ? 'CAST(NULL AS decimal(18,2))'
-              : 'CAST(${double.parse(item['crDay'].toString())} AS decimal(18,2))';
-          return "('$empCode', $bfDay, $crDay)";
-        })
-        .join(',\n');
+  }) async {
+    final existing = <Map<String, dynamic>>[];
+    for (var start = 0; start < list.length; start += _bringForwardChunkSize) {
+      final end = (start + _bringForwardChunkSize < list.length)
+          ? start + _bringForwardChunkSize
+          : list.length;
+      final values = list
+          .sublist(start, end)
+          .map((item) {
+            final empCode = _quote(item['empCode'].toString());
+            final bfDay = item['bfDay'] == null
+                ? 'CAST(NULL AS decimal(18,2))'
+                : 'CAST(${double.parse(item['bfDay'].toString())} AS decimal(18,2))';
+            final crDay = item['crDay'] == null
+                ? 'CAST(NULL AS decimal(18,2))'
+                : 'CAST(${double.parse(item['crDay'].toString())} AS decimal(18,2))';
+            return "('$empCode', $bfDay, $crDay)";
+          })
+          .join(',\n');
 
-    return query('''
+      existing.addAll(
+        await query('''
 WITH Requested AS
 (
   SELECT EMP_CODE, SUM(BF_DAY) AS NEW_BF_DAY, SUM(CR_DAY) AS NEW_CR_DAY
@@ -821,7 +951,10 @@ INNER JOIN dbo.LV_RECORDS R
    OR (Q.NEW_CR_DAY IS NOT NULL AND R.LV_CODE = 'CR(AL)'))
 GROUP BY Q.EMP_CODE, Q.NEW_BF_DAY, Q.NEW_CR_DAY
 ORDER BY Q.EMP_CODE
-''', databaseName: database);
+''', databaseName: database),
+      );
+    }
+    return existing;
   }
 
   String _leaveRowKey(Map<String, dynamic> item) {
